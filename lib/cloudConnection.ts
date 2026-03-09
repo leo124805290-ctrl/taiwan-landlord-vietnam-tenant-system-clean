@@ -1,7 +1,8 @@
 // 雲端連線檢查系統
 // 檢查是否與雲端資料庫保持連線並同步
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api'
+// API URL 配置（部署 Vercel 後修改此處為你的後端地址）
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-vietnam-tenant-system.one29mcd7.vercel.app/api'
 
 // 通用 API 請求函數
 const apiRequest = async <T>(
