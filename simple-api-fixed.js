@@ -1,4 +1,4 @@
-// rebuild: 2026-03-09
+// rebuild: 2026-03-09-rc3
 /**
  * Zeabur 後端 API - 完整重構版
  * 專案：taiwan-landlord-vietnam-tenant-system
