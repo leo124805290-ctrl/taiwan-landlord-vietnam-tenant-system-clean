@@ -1,4 +1,3 @@
-
 // rebuild: 2026-03-09
 /**
  * Zeabur 後端 API - 完整重構版
@@ -46,31 +45,20 @@ function errorResponse(error, message) {
 }
 
 /**
- * 中間件：CORS
+ * 統一回應函數
  */
-function cors(req, res, next) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
+function sendResponse(res, statusCode, data) {
+  try {
+    res.writeHead(statusCode, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Content-Type': 'application/json'
+    });
+    res.end(JSON.stringify(data));
+  } catch (err) {
+    console.error('❌ 發送回應失敗:', err);
   }
-
-  next();
 }
-
-/**
- * 中間件：錯誤處理
- */
-function errorHandler(err, req, res, next) {
-  console.error('❌ API 錯誤:', err);
-  return res.status(500).json(errorResponse(err, '伺服器錯誤'));
-}
-
-/**
- * API 路由
- */
 
 // ==================== 房源管理 ====================
 
@@ -105,10 +93,10 @@ async function getProperties(req, res) {
       })
     );
 
-    return res.json(successResponse(propertiesWithRooms));
+    return sendResponse(res, 200, successResponse(propertiesWithRooms));
   } catch (error) {
     console.error('❌ 獲取房源失敗:', error);
-    return res.status(500).json(errorResponse(error, '獲取房源失敗'));
+    return sendResponse(res, 500, errorResponse(error, '獲取房源失敗'));
   }
 }
 
@@ -120,7 +108,7 @@ async function createProperty(req, res) {
     const { name, address } = req.body;
 
     if (!name) {
-      return res.status(400).json(errorResponse(null, '房源名稱為必填'));
+      return sendResponse(res, 400, errorResponse(null, '房源名稱為必填'));
     }
 
     const result = await db.query(
@@ -128,10 +116,10 @@ async function createProperty(req, res) {
       [name, address || '']
     );
 
-    return res.json(successResponse(result.rows[0]));
+    return sendResponse(res, 200, successResponse(result.rows[0]));
   } catch (error) {
     console.error('❌ 新增房源失敗:', error);
-    return res.status(500).json(errorResponse(error, '新增房源失敗'));
+    return sendResponse(res, 500, errorResponse(error, '新增房源失敗'));
   }
 }
 
@@ -149,13 +137,13 @@ async function updateProperty(req, res) {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json(errorResponse(null, '房源不存在'));
+      return sendResponse(res, 404, errorResponse(null, '房源不存在'));
     }
 
-    return res.json(successResponse(result.rows[0]));
+    return sendResponse(res, 200, successResponse(result.rows[0]));
   } catch (error) {
     console.error('❌ 更新房源失敗:', error);
-    return res.status(500).json(errorResponse(error, '更新房源失敗'));
+    return sendResponse(res, 500, errorResponse(error, '更新房源失敗'));
   }
 }
 
@@ -168,13 +156,13 @@ async function deleteProperty(req, res) {
 
     result = await db.query('DELETE FROM properties WHERE id = $1', [id]);
     if (result.rowCount === 0) {
-      return res.status(404).json(errorResponse(null, '房源不存在'));
+      return sendResponse(res, 404, errorResponse(null, '房源不存在'));
     }
 
-    return res.json(successResponse({ message: '刪除成功', id }));
+    return sendResponse(res, 200, successResponse({ message: '刪除成功', id }));
   } catch (error) {
     console.error('❌ 刪除房源失敗:', error);
-    return res.status(500).json(errorResponse(error, '刪除房源失敗'));
+    return sendResponse(res, 500, errorResponse(error, '刪除房源失敗'));
   }
 }
 
@@ -186,10 +174,10 @@ async function deleteProperty(req, res) {
 async function getRooms(req, res) {
   try {
     const result = await db.query('SELECT * FROM rooms ORDER BY property_id, floor, room_number');
-    return res.json(successResponse(result.rows));
+    return sendResponse(res, 200, successResponse(result.rows));
   } catch (error) {
     console.error('❌ 獲取房間列表失敗:', error);
-    return res.status(500).json(errorResponse(error, '獲取房間列表失敗'));
+    return sendResponse(res, 500, errorResponse(error, '獲取房間列表失敗'));
   }
 }
 
@@ -214,10 +202,10 @@ async function createRoom(req, res) {
       [property_id, floor, room_number, monthly_rent, deposit, status]
     );
 
-    return res.json(successResponse(result.rows[0]));
+    return sendResponse(res, 200, successResponse(result.rows[0]));
   } catch (error) {
     console.error('❌ 新增房間失敗:', error);
-    return res.status(500).json(errorResponse(error, '新增房間失敗'));
+    return sendResponse(res, 500, errorResponse(error, '新增房間失敗'));
   }
 }
 
@@ -240,13 +228,13 @@ async function updateRoom(req, res) {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json(errorResponse(null, '房間不存在'));
+      return sendResponse(res, 404, errorResponse(null, '房間不存在'));
     }
 
-    return res.json(successResponse(result.rows[0]));
+    return sendResponse(res, 200, successResponse(result.rows[0]));
   } catch (error) {
     console.error('❌ 更新房間失敗:', error);
-    return res.status(500).json(errorResponse(error, '更新房間失敗'));
+    return sendResponse(res, 500, errorResponse(error, '更新房間失敗'));
   }
 }
 
@@ -258,13 +246,13 @@ async function deleteRoom(req, res) {
     const { id } = req.params;
     const result = await db.query('DELETE FROM rooms WHERE id = $1', [id]);
     if (result.rowCount === 0) {
-      return res.status(404).json(errorResponse(null, '房間不存在'));
+      return sendResponse(res, 404, errorResponse(null, '房間不存在'));
     }
 
-    return res.json(successResponse({ message: '刪除成功', id }));
+    return sendResponse(res, 200, successResponse({ message: '刪除成功', id }));
   } catch (error) {
     console.error('❌ 刪除房間失敗:', error);
-    return res.status(500).json(errorResponse(error, '刪除房間失敗'));
+    return sendResponse(res, 500, errorResponse(error, '刪除房間失敗'));
   }
 }
 
@@ -280,7 +268,7 @@ async function completeCheckin(req, res) {
     // 檢查房間是否存在
     const roomResult = await db.query('SELECT * FROM rooms WHERE id = $1', [room_id]);
     if (roomResult.rows.length === 0) {
-      return res.status(404).json(errorResponse(null, '房間不存在'));
+      return sendResponse(res, 404, errorResponse(null, '房間不存在'));
     }
 
     const room = roomResult.rows[0];
@@ -310,10 +298,10 @@ async function completeCheckin(req, res) {
       [room_id, room.property_id, `租客 ${tenant_name} 入住`, `入住期間: ${contract_start} 至 ${contract_end}`, 0]
     );
 
-    return res.json(successResponse({ message: '入住完成' }));
+    return sendResponse(res, 200, successResponse({ message: '入住完成' }));
   } catch (error) {
     console.error('❌ 入住失敗:', error);
-    return res.status(500).json(errorResponse(error, '入住失敗'));
+    return sendResponse(res, 500, errorResponse(error, '入住失敗'));
   }
 }
 
@@ -327,7 +315,7 @@ async function completeCheckout(req, res) {
     // 檢查房間是否存在
     const roomResult = await db.query('SELECT * FROM rooms WHERE id = $1', [room_id]);
     if (roomResult.rows.length === 0) {
-      return res.status(404).json(errorResponse(null, '房間不存在'));
+      return sendResponse(res, 404, errorResponse(null, '房間不存在'));
     }
 
     const room = roomResult.rows[0];
@@ -351,10 +339,10 @@ async function completeCheckout(req, res) {
       [room_id, room.property_id, `租客 ${tenant_name} 退房`, '結束租期', 0]
     );
 
-    return res.json(successResponse({ message: '退房完成' }));
+    return sendResponse(res, 200, successResponse({ message: '退房完成' }));
   } catch (error) {
     console.error('❌ 退房失敗:', error);
-    return res.status(500).json(errorResponse(error, '退房失敗'));
+    return sendResponse(res, 500, errorResponse(error, '退房失敗'));
   }
 }
 
@@ -366,10 +354,10 @@ async function completeCheckout(req, res) {
 async function getPayments(req, res) {
   try {
     const result = await db.query('SELECT * FROM payments ORDER BY created_at DESC');
-    return res.json(successResponse(result.rows));
+    return sendResponse(res, 200, successResponse(result.rows));
   } catch (error) {
     console.error('❌ 獲取收款記錄失敗:', error);
-    return res.status(500).json(errorResponse(error, '獲取收款記錄失敗'));
+    return sendResponse(res, 500, errorResponse(error, '獲取收款記錄失敗'));
   }
 }
 
@@ -381,7 +369,7 @@ async function createPayment(req, res) {
     const { room_id, property_id, type, amount, paid_date, note } = req.body;
 
     if (!room_id || !type || !amount || !paid_date) {
-      return res.status(400).json(errorResponse(null, '缺少必填欄位: room_id, type, amount, paid_date'));
+      return sendResponse(res, 400, errorResponse(null, '缺少必填欄位: room_id, type, amount, paid_date'));
     }
 
     const result = await db.query(
@@ -398,10 +386,10 @@ async function createPayment(req, res) {
       [room_id, property_id || result.rows[0].property_id, `${type}: ${amount}`, `收款日期: ${paid_date}`, amount]
     );
 
-    return res.json(successResponse(result.rows[0]));
+    return sendResponse(res, 200, successResponse(result.rows[0]));
   } catch (error) {
     console.error('❌ 新增收款記錄失敗:', error);
-    return res.status(500).json(errorResponse(error, '新增收款記錄失敗'));
+    return sendResponse(res, 500, errorResponse(error, '新增收款記錄失敗'));
   }
 }
 
@@ -413,10 +401,10 @@ async function createPayment(req, res) {
 async function getMaintenance(req, res) {
   try {
     const result = await db.query('SELECT * FROM maintenance ORDER BY created_at DESC');
-    return res.json(successResponse(result.rows));
+    return sendResponse(res, 200, successResponse(result.rows));
   } catch (error) {
     console.error('❌ 獲取維修記錄失敗:', error);
-    return res.status(500).json(errorResponse(error, '獲取維修記錄失敗'));
+    return sendResponse(res, 500, errorResponse(error, '獲取維修記錄失敗'));
   }
 }
 
@@ -434,10 +422,10 @@ async function createMaintenance(req, res) {
       [room_id, property_id, title, description, cost]
     );
 
-    return res.json(successResponse(result.rows[0]));
+    return sendResponse(res, 200, successResponse(result.rows[0]));
   } catch (error) {
     console.error('❌ 新增維修記錄失敗:', error);
-    return res.status(500).json(errorResponse(error, '新增維修記錄失敗'));
+    return sendResponse(res, 500, errorResponse(error, '新增維修記錄失敗'));
   }
 }
 
@@ -449,10 +437,10 @@ async function createMaintenance(req, res) {
 async function getHistory(req, res) {
   try {
     const result = await db.query('SELECT * FROM history ORDER BY created_at DESC LIMIT 100');
-    return res.json(successResponse(result.rows));
+    return sendResponse(res, 200, successResponse(result.rows));
   } catch (error) {
     console.error('❌ 獲取歷史記錄失敗:', error);
-    return res.status(500).json(errorResponse(error, '獲取歷史記錄失敗'));
+    return sendResponse(res, 500, errorResponse(error, '獲取歷史記錄失敗'));
   }
 }
 
@@ -487,126 +475,113 @@ async function syncAll(req, res) {
       })
     );
 
-    return res.json(successResponse({
+    return sendResponse(res, 200, successResponse({
       properties: propertiesWithDetails,
       total_properties: propertiesResult.rows.length
     }));
   } catch (error) {
     console.error('❌ 同步資料失敗:', error);
-    return res.status(500).json(errorResponse(error, '同步資料失敗'));
+    return sendResponse(res, 500, errorResponse(error, '同步資料失敗'));
   }
 }
 
+// ==================== 伺服器設定 ====================
+
 /**
- * 處理 API 請求
+ * 處理 API 請求路由
  */
 function handleRequest(req, res) {
-  console.log(`\n📝 ${req.method} ${req.path}`);
+  const path = req.url || req.path;
+  console.log(`📝 ${req.method} ${path}`);
 
-  // 根據路徑路由
-  const path = req.path;
+  // 處理選項請求（CORS）
+  if (req.method === 'OPTIONS') {
+    return sendResponse(res, 200, { success: true });
+  }
+
+  // 解析 path
+  const urlPath = path.split('?')[0]; // 移除 query string
 
   if (path.match(/^\/api\/properties(\?|$)/)) {
     switch (req.method) {
-      case 'GET':
-        return getProperties(req, res);
-      case 'POST':
-        return createProperty(req, res);
-      case 'PUT':
-        return updateProperty(req, res);
-      case 'DELETE':
-        return deleteProperty(req, res);
-      default:
-        return res.status(405).json(errorResponse(null, '方法不允許'));
+      case 'GET': return getProperties(req, res);
+      case 'POST': return createProperty(req, res);
+      case 'PUT': return updateProperty(req, res);
+      case 'DELETE': return deleteProperty(req, res);
+      default: return sendResponse(res, 405, errorResponse(null, '方法不允許'));
     }
   }
   else if (path.match(/^\/api\/rooms(\?|$)/)) {
     switch (req.method) {
-      case 'GET':
-        return getRooms(req, res);
-      case 'POST':
-        return createRoom(req, res);
-      case 'PUT':
-        return updateRoom(req, res);
-      case 'DELETE':
-        return deleteRoom(req, res);
-      default:
-        return res.status(405).json(errorResponse(null, '方法不允許'));
+      case 'GET': return getRooms(req, res);
+      case 'POST': return createRoom(req, res);
+      case 'PUT': return updateRoom(req, res);
+      case 'DELETE': return deleteRoom(req, res);
+      default: return sendResponse(res, 405, errorResponse(null, '方法不允許'));
     }
   }
   else if (path.match(/^\/api\/checkin\/complete/)) {
-    if (req.method !== 'POST') {
-      return res.status(405).json(errorResponse(null, '方法不允許'));
+    if (req.method === 'POST') {
+      return completeCheckin(req, res);
     }
-    return completeCheckin(req, res);
+    return sendResponse(res, 405, errorResponse(null, '方法不允許'));
   }
   else if (path.match(/^\/api\/checkout\/complete/)) {
-    if (req.method !== 'POST') {
-      return res.status(405).json(errorResponse(null, '方法不允許'));
+    if (req.method === 'POST') {
+      return completeCheckout(req, res);
     }
-    return completeCheckout(req, res);
+    return sendResponse(res, 405, errorResponse(null, '方法不允許'));
   }
   else if (path.match(/^\/api\/payments(\?|$)/)) {
     switch (req.method) {
-      case 'GET':
-        return getPayments(req, res);
-      case 'POST':
-        return createPayment(req, res);
-      default:
-        return res.status(405).json(errorResponse(null, '方法不允許'));
+      case 'GET': return getPayments(req, res);
+      case 'POST': return createPayment(req, res);
+      default: return sendResponse(res, 405, errorResponse(null, '方法不允許'));
     }
   }
   else if (path.match(/^\/api\/maintenance(\?|$)/)) {
     switch (req.method) {
-      case 'GET':
-        return getMaintenance(req, res);
-      case 'POST':
-        return createMaintenance(req, res);
-      default:
-        return res.status(405).json(errorResponse(null, '方法不允許'));
+      case 'GET': return getMaintenance(req, res);
+      case 'POST': return createMaintenance(req, res);
+      default: return sendResponse(res, 405, errorResponse(null, '方法不允許'));
     }
   }
   else if (path === '/api/history') {
-    if (req.method !== 'GET') {
-      return res.status(405).json(errorResponse(null, '方法不允許'));
+    if (req.method === 'GET') {
+      return getHistory(req, res);
     }
-    return getHistory(req, res);
+    return sendResponse(res, 405, errorResponse(null, '方法不允許'));
   }
   else if (path === '/sync/all') {
-    if (req.method !== 'GET') {
-      return res.status(405).json(errorResponse(null, '方法不允許'));
+    if (req.method === 'GET') {
+      return syncAll(req, res);
     }
-    return syncAll(req, res);
+    return sendResponse(res, 405, errorResponse(null, '方法不允許'));
   }
   else {
-    return res.status(404).json(errorResponse(null, 'API 端點不存在'));
+    return sendResponse(res, 404, errorResponse(null, 'API 端點不存在'));
   }
 }
 
 // 創建 HTTP 伺服器
 const { createServer } = require('http');
-
 const server = createServer((req, res) => {
-  // 主要 API 路由
-  const apiPrefix = /^\/api\//;
-  const syncPrefix = /^\/sync\//;
-
-  if (apiPrefix.test(req.path) || syncPrefix.test(req.path)) {
-    // 錯誤處理
-    res.on('error', (err) => {
-      console.error('❌ 回應錯誤:', err);
-    });
-
-    // 處理請求
+  try {
+    // 處理 API 請求
     handleRequest(req, res);
-  } else {
-    res.status(404).json(errorResponse(null, 'API 端點不存在'));
+  } catch (err) {
+    console.error('❌ 請求處理錯誤:', err);
+    return sendResponse(res, 500, errorResponse(err, '請求處理錯誤'));
   }
 });
 
-// 錯誤處理
+// 錯誤處理（只處理監聽錯誤）
 server.on('error', (err) => {
-  console.error('❌ 伺服器錯誤:', err);
+  if (err.code === 'EADDRINUSE') {
+    console.error('❌ 埠已被佔用');
+  } else {
+    console.error('❌ 伺服器錯誤:', err);
+  }
 });
 
 // 啟動伺服器
