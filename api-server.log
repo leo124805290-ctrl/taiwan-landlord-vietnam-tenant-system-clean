@@ -22,3 +22,24 @@
     at Server.emit (node:events:519:28)
     at parserOnIncoming (node:_http_server:1186:12)
     at HTTPParser.parserOnHeadersComplete (node:_http_common:122:17)
+node:events:497
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: Connection terminated unexpectedly
+    at Connection.<anonymous> (/home/node/.openclaw/workspace/node_modules/pg/lib/client.js:180:73)
+    at Object.onceWrapper (node:events:633:28)
+    at Connection.emit (node:events:519:28)
+    at Socket.<anonymous> (/home/node/.openclaw/workspace/node_modules/pg/lib/connection.js:61:12)
+    at Socket.emit (node:events:519:28)
+    at TCP.<anonymous> (node:net:346:12)
+Emitted 'error' event on Client instance at:
+    at Client._handleErrorEvent (/home/node/.openclaw/workspace/node_modules/pg/lib/client.js:393:10)
+    at Connection.<anonymous> (/home/node/.openclaw/workspace/node_modules/pg/lib/client.js:198:16)
+    at Object.onceWrapper (node:events:633:28)
+    at Connection.emit (node:events:519:28)
+    at Socket.<anonymous> (/home/node/.openclaw/workspace/node_modules/pg/lib/connection.js:61:12)
+    at Socket.emit (node:events:519:28)
+    at TCP.<anonymous> (node:net:346:12)
+
+Node.js v22.22.0

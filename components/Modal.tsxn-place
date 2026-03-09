@@ -4362,7 +4362,7 @@ export default function Modal() {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            status: 'vacant',
+            status: 'vacant',,
             tenant_name: null,
             tenant_phone: null,
             check_in_date: null,
@@ -4653,7 +4653,7 @@ export default function Modal() {
           room_number: roomNumInput.value.trim(),
           monthly_rent: parseInt(rentInput.value) || 7000,
           deposit: parseInt(depositInput.value) || 14000,
-          status: 'vacant',
+          status: 'available'
         })
       })
       const data = await res.json()
