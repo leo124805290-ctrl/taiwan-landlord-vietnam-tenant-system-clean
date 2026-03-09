@@ -1,0 +1,25 @@
+
+✅ Zeabur API Server 執行中
+📡 Port: 3001
+🔗 URL: https://taiwan-landlord-test.zeabur.app/api
+💾 Database: :Qyd36iUVa7s0O2c5XpDz9fGYZr814TxW@***
+✨ API Routes:
+   - /api/properties (GET, POST, PUT, DELETE)
+   - /api/rooms (GET, POST, PUT, DELETE)
+   - /api/checkin/complete (POST)
+   - /api/checkout/complete (POST)
+   - /api/payments (GET, POST)
+   - /api/maintenance (GET, POST)
+   - /api/history (GET)
+   - /sync/all (GET)
+
+📝 GET /api/properties
+📝 GET /properties
+❌ 請求處理錯誤: TypeError: Cannot read properties of null (reading 'code')
+    at errorResponse (/home/node/.openclaw/workspace/taiwan-landlord-vietnam-tenant-system/simple-api-fixed.js:40:19)
+    at handleRequest (/home/node/.openclaw/workspace/taiwan-landlord-vietnam-tenant-system/simple-api-fixed.js:562:35)
+    at Server.<anonymous> (/home/node/.openclaw/workspace/taiwan-landlord-vietnam-tenant-system/simple-api-fixed.js:571:5)
+    at Server.emit (node:events:519:28)
+    at parserOnIncoming (node:_http_server:1186:12)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:122:17)
+📝 GET /api/properties

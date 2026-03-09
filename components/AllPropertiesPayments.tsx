@@ -77,7 +77,7 @@ export default function AllPropertiesPayments(props: AllPropertiesPaymentsProps)
   const calculateSuggestedCharges = async () => {
     setLoadingSuggestions(true)
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api'
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
       const response = await fetch(`${API_URL}/charges/suggested`)
       const data = await response.json()
       
@@ -99,7 +99,7 @@ export default function AllPropertiesPayments(props: AllPropertiesPaymentsProps)
   const generatePaymentRecords = async (tenantId: number, chargeTypes: string[]) => {
     setGeneratingPayments(true)
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api'
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
       const response = await fetch(`${API_URL}/charges/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -148,7 +148,7 @@ export default function AllPropertiesPayments(props: AllPropertiesPaymentsProps)
         const chargeTypes = tenant.suggested_charges.map((charge: any) => charge.type)
         
         if (chargeTypes.length > 0) {
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api'
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
           const response = await fetch(`${API_URL}/charges/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -801,7 +801,7 @@ export default function AllPropertiesPayments(props: AllPropertiesPaymentsProps)
           <button 
             onClick={async () => {
               try {
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api'
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
                 const response = await fetch(`${API_URL}/charges/suggested`)
                 const data = await response.json()
                 

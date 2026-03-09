@@ -127,7 +127,7 @@ export default function Header() {
 
                                 if (!confirm(`確定要刪除「${prop.name}」嗎？\\n此操作無法復原，所有房間和付款記錄都會一起刪除！`)) return
 
-                                const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://taiwan-landlord-test.zeabur.app/api"
+                                const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://localhost.taiwan-landlord-test.zeabur.app/api"
 
                                 fetch(`${API_URL}/properties/${prop.id}`, { method: "DELETE" })
 

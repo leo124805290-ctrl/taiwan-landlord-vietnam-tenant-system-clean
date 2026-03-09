@@ -3153,7 +3153,7 @@ export default function Modal() {
 
     try {
       // 1. 先呼叫後端 API 新增物業，取得真實 ID
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api'
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
       const propRes = await fetch(`${API_URL}/properties`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -4211,7 +4211,7 @@ export default function Modal() {
     const room = property.rooms.find((r: any) => r.id === roomId)
     if (!room) return
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api'
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
     
     try {
       // 只呼叫一個新的原子性入住API
@@ -4353,7 +4353,7 @@ export default function Modal() {
 
     
     // 同步後端
-    const _API = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api'
+    const _API = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
     const _room = property?.rooms.find((r: any) => r.id === roomId)
     if (_room) {
       try {
@@ -4531,7 +4531,7 @@ export default function Modal() {
           }
         : p
     )    // 呼叫後端更新房間狀態
-    const _apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api'
+    const _apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
     const _room = property.rooms.find((r: any) => r.id === roomId)
     if (_room) {
       fetch(`${_apiUrl}/rooms/${roomId}`, {
@@ -4555,7 +4555,7 @@ export default function Modal() {
 
     
     // 同步後端（續租邏輯）
-    const _API2 = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api'
+    const _API2 = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
     const _room2 = property?.rooms.find((r: any) => r.id === roomId)
     if (_room2 && _room2.current_tenant_id) {
       try {
@@ -4643,7 +4643,7 @@ export default function Modal() {
     }
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api'
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
       const res = await fetch(`${API_URL}/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
