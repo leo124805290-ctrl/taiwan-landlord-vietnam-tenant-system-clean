@@ -3238,8 +3238,50 @@ export default function Modal() {
       alert(`✅ 物業建立成功！\n已自動建立 ${rooms.length} 間房間`)
       closeModal()
     } catch (err) {
-      console.error('新增物業失敗:', err)
-      alert('❌ 新增物業失敗，請稍後再試')
+      // 雲端不可用時（例如 Vercel 未設定 DATABASE_URL），自動降級為離線模式：只寫入本地資料
+      console.error('新增物業失敗(雲端):', err)
+
+      const newPropertyId =
+        Math.max(...(state.data?.properties || []).map((p: any) => p.id), 0) + 1
+      const maxRoomId = Math.max(
+        0,
+        ...((state.data?.properties || []).flatMap((p: any) => (p.rooms || []).map((r: any) => r.id)) as number[])
+      )
+
+      const offlineRooms: any[] = []
+      let nextRoomId = maxRoomId + 1
+      for (let floor = 1; floor <= floors; floor++) {
+        const roomsOnFloor = floorRooms[floor - 1]
+        for (let r = 1; r <= roomsOnFloor; r++) {
+          const roomLabel = `${floor}${r.toString().padStart(2, '0')}`
+          offlineRooms.push({
+            id: nextRoomId++,
+            f: floor,
+            n: roomLabel,
+            r: defaultRent,
+            d: defaultDeposit,
+            s: 'available' as const,
+          })
+        }
+      }
+
+      const offlineProperty = {
+        id: newPropertyId,
+        name: nameInput.value.trim(),
+        address: addrInput.value.trim(),
+        floors,
+        rooms: offlineRooms,
+        payments: [],
+        history: [],
+        maintenance: [],
+      }
+
+      updateData({
+        properties: [...state.data.properties, offlineProperty],
+      })
+      updateState({ currentProperty: newPropertyId })
+      alert(`⚠️ 目前雲端未就緒（DATABASE_URL 未設定或同步失敗），已改為離線建立。\n已建立 ${offlineRooms.length} 間房間。`)
+      closeModal()
     }
   }
 

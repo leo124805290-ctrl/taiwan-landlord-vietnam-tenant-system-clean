@@ -4,6 +4,19 @@ import { columnExists, tableExists } from '@/src/server/schema'
 
 export async function GET() {
   try {
+    // 沒有 DATABASE_URL 時不要讓整站卡死：回傳空資料讓前端可離線使用（localStorage）
+    if (!process.env.DATABASE_URL) {
+      return ok({
+        properties: [],
+        rooms: [],
+        payments: [],
+        tenants: [],
+        history: [],
+        maintenance: [],
+        mode: 'offline',
+      })
+    }
+
     const db = getDb()
     const hasProperties = await tableExists('properties')
     if (!hasProperties) {
@@ -114,7 +127,19 @@ export async function GET() {
       maintenance: [],
     })
   } catch (e) {
-    return fail('同步資料失敗', 'DB_ERROR', { status: 500 }, e instanceof Error ? e.message : e)
+    const msg = e instanceof Error ? e.message : String(e)
+    if (msg.includes('Missing DATABASE_URL')) {
+      return ok({
+        properties: [],
+        rooms: [],
+        payments: [],
+        tenants: [],
+        history: [],
+        maintenance: [],
+        mode: 'offline',
+      })
+    }
+    return fail('同步資料失敗', 'DB_ERROR', { status: 500 }, msg)
   }
 }
 
