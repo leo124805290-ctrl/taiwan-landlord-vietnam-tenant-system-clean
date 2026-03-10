@@ -214,7 +214,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
     const connect = () => {
-      const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://taiwan-landlord-test.zeabur.app'
+      // 沒有明確設定就不要啟用 WebSocket，避免預設連到已停用服務造成無限重連噪音
+      const WS_URL = process.env.NEXT_PUBLIC_WS_URL
+      if (!WS_URL) return
       ws = new WebSocket(WS_URL)
 
       ws.onopen = () => console.log('🔌 WebSocket 已連線，即時同步啟動')

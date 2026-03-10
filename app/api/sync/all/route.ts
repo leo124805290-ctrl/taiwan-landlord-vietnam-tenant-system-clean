@@ -1,41 +1,95 @@
 import { getDb } from '@/src/server/db'
 import { fail, ok } from '@/src/server/http'
+import { columnExists, tableExists } from '@/src/server/schema'
 
 export async function GET() {
   try {
     const db = getDb()
+    const hasProperties = await tableExists('properties')
+    if (!hasProperties) {
+      return ok({
+        properties: [],
+        rooms: [],
+        payments: [],
+        tenants: [],
+        history: [],
+        maintenance: [],
+      })
+    }
+
     const propsRes = await db.query('SELECT id, name, address FROM properties ORDER BY name')
 
     const properties = await Promise.all(
       propsRes.rows.map(async (p: any) => {
-        const roomsRes = await db.query(
-          `SELECT id, floor, room_number, monthly_rent, deposit, status,
-                  tenant_name, tenant_phone, check_in_date, check_out_date,
-                  current_meter, previous_meter
-           FROM rooms
-           WHERE property_id = $1
-           ORDER BY floor, room_number`,
-          [p.id]
-        )
-        const paymentsRes = await db.query('SELECT * FROM payments WHERE property_id = $1 ORDER BY created_at DESC', [p.id])
-        const historyRes = await db.query('SELECT * FROM history WHERE property_id = $1 ORDER BY created_at DESC LIMIT 200', [p.id])
-        const maintenanceRes = await db.query('SELECT * FROM maintenance WHERE property_id = $1 ORDER BY created_at DESC', [p.id])
+        // rooms：做 schema 容錯，避免欄位不存在造成整包同步失敗
+        const rooms: any[] = []
+        if (await tableExists('rooms')) {
+          const cols = {
+            floor: (await columnExists('rooms', 'floor')) ? 'floor' : null,
+            room_number: (await columnExists('rooms', 'room_number')) ? 'room_number' : null,
+            monthly_rent: (await columnExists('rooms', 'monthly_rent')) ? 'monthly_rent' : null,
+            deposit: (await columnExists('rooms', 'deposit')) ? 'deposit' : null,
+            status: (await columnExists('rooms', 'status')) ? 'status' : null,
+            tenant_name: (await columnExists('rooms', 'tenant_name')) ? 'tenant_name' : null,
+            tenant_phone: (await columnExists('rooms', 'tenant_phone')) ? 'tenant_phone' : null,
+            check_in_date: (await columnExists('rooms', 'check_in_date')) ? 'check_in_date' : null,
+            check_out_date: (await columnExists('rooms', 'check_out_date')) ? 'check_out_date' : null,
+            current_meter: (await columnExists('rooms', 'current_meter')) ? 'current_meter' : null,
+            previous_meter: (await columnExists('rooms', 'previous_meter')) ? 'previous_meter' : null,
+          }
 
-        // 盡量輸出成前端需要的簡化結構（不硬依賴完整後端）
-        const rooms = roomsRes.rows.map((r: any) => ({
-          id: r.id,
-          f: Number(r.floor ?? 0),
-          n: String(r.room_number ?? ''),
-          r: Number(r.monthly_rent ?? 0),
-          d: Number(r.deposit ?? 0),
-          s: r.status === 'vacant' ? 'available' : r.status,
-          t: r.tenant_name ?? '',
-          p: r.tenant_phone ?? '',
-          in: r.check_in_date ?? '',
-          out: r.check_out_date ?? '',
-          cm: r.current_meter ?? 0,
-          pm: r.previous_meter ?? 0,
-        }))
+          const select = [
+            'id',
+            'property_id',
+            cols.floor ? `${cols.floor} as floor` : 'NULL::int as floor',
+            cols.room_number ? `${cols.room_number} as room_number` : `id::text as room_number`,
+            cols.monthly_rent ? `${cols.monthly_rent} as monthly_rent` : '0::int as monthly_rent',
+            cols.deposit ? `${cols.deposit} as deposit` : '0::int as deposit',
+            cols.status ? `${cols.status} as status` : `'vacant'::text as status`,
+            cols.tenant_name ? `${cols.tenant_name} as tenant_name` : `''::text as tenant_name`,
+            cols.tenant_phone ? `${cols.tenant_phone} as tenant_phone` : `''::text as tenant_phone`,
+            cols.check_in_date ? `${cols.check_in_date} as check_in_date` : `NULL::date as check_in_date`,
+            cols.check_out_date ? `${cols.check_out_date} as check_out_date` : `NULL::date as check_out_date`,
+            cols.current_meter ? `${cols.current_meter} as current_meter` : `0::int as current_meter`,
+            cols.previous_meter ? `${cols.previous_meter} as previous_meter` : `0::int as previous_meter`,
+          ].join(', ')
+
+          const roomsRes = await db.query(
+            `SELECT ${select}
+             FROM rooms
+             WHERE property_id = $1
+             ORDER BY floor NULLS LAST, room_number`,
+            [p.id]
+          )
+
+          rooms.push(
+            ...roomsRes.rows.map((r: any) => ({
+              id: r.id,
+              f: Number(r.floor ?? 0),
+              n: String(r.room_number ?? ''),
+              r: Number(r.monthly_rent ?? 0),
+              d: Number(r.deposit ?? 0),
+              s: r.status === 'vacant' ? 'available' : r.status,
+              t: r.tenant_name ?? '',
+              p: r.tenant_phone ?? '',
+              in: r.check_in_date ? String(r.check_in_date).slice(0, 10) : '',
+              out: r.check_out_date ? String(r.check_out_date).slice(0, 10) : '',
+              cm: Number(r.current_meter ?? 0),
+              pm: Number(r.previous_meter ?? 0),
+            }))
+          )
+        }
+
+        // 其他表：不存在就回空陣列，避免 getAllData 整包炸掉
+        const paymentsRes = (await tableExists('payments'))
+          ? await db.query('SELECT * FROM payments WHERE property_id = $1 ORDER BY created_at DESC', [p.id])
+          : { rows: [] as any[] }
+        const historyRes = (await tableExists('history'))
+          ? await db.query('SELECT * FROM history WHERE property_id = $1 ORDER BY created_at DESC LIMIT 200', [p.id])
+          : { rows: [] as any[] }
+        const maintenanceRes = (await tableExists('maintenance'))
+          ? await db.query('SELECT * FROM maintenance WHERE property_id = $1 ORDER BY created_at DESC', [p.id])
+          : { rows: [] as any[] }
 
         return {
           id: p.id,

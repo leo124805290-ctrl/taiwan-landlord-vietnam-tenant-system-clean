@@ -4,7 +4,8 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 export function connectWebSocket(onMessage: (event: string, data: any) => void) {
   if (typeof window === 'undefined') return; // SSR 保護
 
-  const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://taiwan-landlord-test.zeabur.app';
+  const WS_URL = process.env.NEXT_PUBLIC_WS_URL;
+  if (!WS_URL) return;
   
   if (ws && ws.readyState === WebSocket.OPEN) return;
 

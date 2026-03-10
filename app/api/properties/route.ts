@@ -1,5 +1,6 @@
 import { getDb } from '@/src/server/db'
 import { fail, ok } from '@/src/server/http'
+import { columnExists } from '@/src/server/schema'
 
 export async function GET() {
   try {
@@ -26,12 +27,26 @@ export async function POST(req: Request) {
     if (!name) return fail('物業名稱為必填', 'VALIDATION_ERROR', { status: 400 })
 
     const db = getDb()
-    const { rows } = await db.query(
-      `INSERT INTO properties (name, address, owner_name, owner_phone)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, name, address, owner_name, owner_phone, created_at`,
-      [name, address, owner_name, owner_phone]
-    )
+    const hasOwnerName = await columnExists('properties', 'owner_name')
+    const hasOwnerPhone = await columnExists('properties', 'owner_phone')
+
+    let rows: any[] = []
+    if (hasOwnerName && hasOwnerPhone) {
+      ;({ rows } = await db.query(
+        `INSERT INTO properties (name, address, owner_name, owner_phone)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id`,
+        [name, address, owner_name, owner_phone]
+      ))
+    } else {
+      // DB schema 較舊：只寫入基本欄位，避免 500
+      ;({ rows } = await db.query(
+        `INSERT INTO properties (name, address)
+         VALUES ($1, $2)
+         RETURNING id`,
+        [name, address]
+      ))
+    }
 
     // 與前端 `Modal.tsx` 的期待一致：propData.data.id
     return ok({ id: rows[0].id })
