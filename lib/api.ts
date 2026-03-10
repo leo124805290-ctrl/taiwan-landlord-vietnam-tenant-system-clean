@@ -1,5 +1,6 @@
-// API 服務層 - 連接 Zeabur 後端
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api';
+// API 服務層
+// 預設使用同源 `/api`（Vercel 上的 Next Route Handlers）
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 // 獲取 Token 從 localStorage
 const getToken = (): string | null => {

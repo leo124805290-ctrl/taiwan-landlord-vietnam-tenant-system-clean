@@ -5,7 +5,11 @@
  * Base URL: https://taiwan-landlord-test.zeabur.app/api
  */
 
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://root:Qyd36iUVa7s0O2c5XpDz9fGYZr814TxW@43.167.190.238:32048/zeabur';
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  console.error('❌ 缺少 DATABASE_URL，請先設定環境變數再啟動');
+  process.exit(1);
+}
 
 // PostgreSQL 連線
 const { Client } = require('pg');

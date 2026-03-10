@@ -1,8 +1,9 @@
 // 雲端連線檢查系統
 // 檢查是否與雲端資料庫保持連線並同步
 
-// API URL 配置（部署 Vercel 後修改此處為你的後端地址）
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://taiwan-landlord-test.zeabur.app/api'
+// API URL 配置
+// 預設使用同源 `/api`（Vercel 上的 Next Route Handlers），避免 CORS 與外部服務不穩
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 // 通用 API 請求函數
 const apiRequest = async <T>(
@@ -97,10 +98,10 @@ class CloudConnectionManager {
       this.notifyListeners()
       
       // 測試 API 連線 - 使用健康檢查端點
-      const response = await fetch(`${API_URL.replace('/api', '')}/health`)
+      const response = await fetch(`${API_URL}/health`)
       const healthData = await response.json()
       
-      if (response.ok && healthData.status === 'healthy' || healthData.status === 'ok') {
+      if (response.ok && (healthData.data?.status === 'ok' || healthData.status === 'ok' || healthData.status === 'healthy')) {
         this.status.connected = true
         this.status.lastError = null
         this.status.serverTime = healthData.timestamp || new Date().toISOString()
@@ -148,10 +149,10 @@ class CloudConnectionManager {
       this.notifyListeners()
       
       // 測試 API 連線 - 使用健康檢查端點
-      const response = await fetch(`${API_URL.replace('/api', '')}/health`)
+      const response = await fetch(`${API_URL}/health`)
       const healthData = await response.json()
       
-      if (response.ok && healthData.status === 'healthy' || healthData.status === 'ok') {
+      if (response.ok && (healthData.data?.status === 'ok' || healthData.status === 'ok' || healthData.status === 'healthy')) {
         this.status.connected = true
         this.status.lastError = null
         this.status.serverTime = healthData.timestamp || new Date().toISOString()

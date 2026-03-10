@@ -1,12 +1,11 @@
 // 物業編輯功能 - 完整修復方案
 const { Client } = require('pg');
-const client = new Client({
-  host: '43.153.184.174',
-  port: 32199,
-  user: 'root',
-  password: 'I4tk53VT8w9er12a7R6HoLUznSNGD0Ov',
-  database: 'zeabur'
-});
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  console.error('❌ 缺少 DATABASE_URL，請先設定環境變數再執行');
+  process.exit(1);
+}
+const client = new Client({ connectionString: DATABASE_URL });
 
 async function checkEditableFields() {
   try {

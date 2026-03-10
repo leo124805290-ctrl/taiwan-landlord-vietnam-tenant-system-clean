@@ -1537,6 +1537,20 @@ export default function Modal() {
                 </label>
               </div>
             </div>
+
+            {/* 步驟1-2：退房日期 */}
+            <div className="mb-6">
+              <h3 className="text-lg font-bold mb-3">1-2. {t('moveOutDate', state.lang)}</h3>
+              <input
+                type="date"
+                id="checkOutDate"
+                defaultValue={new Date().toISOString().split('T')[0]}
+                className="input-field"
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                {t('scheduledCheckOut', state.lang)} {t('contractEnd', state.lang)}: {checkOutRoom.out || '-'}
+              </div>
+            </div>
             
             {/* 步驟2：電費結算 */}
             <div className="mb-6">
@@ -3153,7 +3167,7 @@ export default function Modal() {
 
     try {
       // 1. 先呼叫後端 API 新增物業，取得真實 ID
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
       const propRes = await fetch(`${API_URL}/properties`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -4211,7 +4225,7 @@ export default function Modal() {
     const room = property.rooms.find((r: any) => r.id === roomId)
     if (!room) return
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
     
     try {
       // 只呼叫一個新的原子性入住API
@@ -4261,6 +4275,7 @@ export default function Modal() {
     const finalMeterInput = document.getElementById('checkOutFinalMeter') as HTMLInputElement
     const electricityCostInput = document.getElementById('checkOutElectricityCost') as HTMLInputElement
     const totalDeductionsInput = document.getElementById('checkOutTotalDeductions') as HTMLInputElement
+    const checkOutDateInput = document.getElementById('checkOutDate') as HTMLInputElement
     
     // 獲取扣款項目
     const damageInput = document.getElementById('checkOutDamageDeduction') as HTMLInputElement
@@ -4273,6 +4288,10 @@ export default function Modal() {
       alert('請填寫最後電錶讀數')
       return
     }
+    if (!checkOutDateInput?.value) {
+      alert('請選擇退房日期')
+      return
+    }
 
     const finalMeter = parseInt(finalMeterInput.value) || 0
     const electricityCost = parseFloat(electricityCostInput?.value || '0') || 0
@@ -4281,6 +4300,7 @@ export default function Modal() {
     const cleaning = parseFloat(cleaningInput?.value || '0') || 0
     const other = parseFloat(otherInput?.value || '0') || 0
     const notes = notesInput?.value || ''
+    const checkOutDate = checkOutDateInput.value
 
     // 找到房間
     const room = property.rooms.find((r: Room) => r.id === roomId)
@@ -4307,7 +4327,7 @@ export default function Modal() {
                     finalMeter, // 儲存最後電錶讀數
                     finalElectricityFee: electricityCost, // 儲存最後電費
                     checkOutType: checkOutTypeInput.value as 'scheduled' | 'early',
-                    checkOutDate: new Date().toISOString().split('T')[0],
+                    checkOutDate,
                     checkOutDeductions: {
                       damage,
                       cleaning,
@@ -4333,8 +4353,8 @@ export default function Modal() {
                 u: finalMeter - (room.initialElectricityMeter || room.pm || 0), // 用電度數
                 e: electricityCost, // 電費
                 total: -totalDeductions, // 負數表示扣款
-                due: new Date().toISOString().split('T')[0],
-                paid: new Date().toISOString().split('T')[0],
+                due: checkOutDate,
+                paid: checkOutDate,
                 s: 'paid' as const,
                 notes: `退房結算 - ${checkOutTypeInput.value === 'scheduled' ? '到期退房' : '臨時退房'}${notes ? ` (${notes})` : ''}`,
                 isCheckOut: true,
@@ -4353,7 +4373,7 @@ export default function Modal() {
 
     
     // 同步後端
-    const _API = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
+    const _API = process.env.NEXT_PUBLIC_API_URL || '/api'
     const _room = property?.rooms.find((r: any) => r.id === roomId)
     if (_room) {
       try {
@@ -4531,7 +4551,7 @@ export default function Modal() {
           }
         : p
     )    // 呼叫後端更新房間狀態
-    const _apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
+    const _apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
     const _room = property.rooms.find((r: any) => r.id === roomId)
     if (_room) {
       fetch(`${_apiUrl}/rooms/${roomId}`, {
@@ -4555,7 +4575,7 @@ export default function Modal() {
 
     
     // 同步後端（續租邏輯）
-    const _API2 = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
+    const _API2 = process.env.NEXT_PUBLIC_API_URL || '/api'
     const _room2 = property?.rooms.find((r: any) => r.id === roomId)
     if (_room2 && _room2.current_tenant_id) {
       try {
@@ -4643,7 +4663,7 @@ export default function Modal() {
     }
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost.taiwan-landlord-test.zeabur.app/api'
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
       const res = await fetch(`${API_URL}/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
