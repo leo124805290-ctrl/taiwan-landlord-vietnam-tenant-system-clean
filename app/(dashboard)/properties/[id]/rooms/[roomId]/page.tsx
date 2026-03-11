@@ -18,20 +18,25 @@ export default function RoomDetailPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [propRes, roomRes, payRes, listRes] = await Promise.all([
-          propertyAPI.get(params.propertyId as string),
-          roomAPI.get(Number(params.roomId)),
-          paymentAPI.list({ room_id: Number(params.roomId) }),
-          propertyAPI.list()
+        const [listRes, roomsRes, payRes] = await Promise.all([
+          propertyAPI.list(),
+          roomAPI.list({ property_id: Number(params.propertyId) }),
+          paymentAPI.list({ room_id: Number(params.roomId) })
         ])
 
-        if (propRes.success && propRes.data) {
-          setProperty(propRes.data)
-          setProperties(listRes.data)
+        // 從 list 中找到對應的 property
+        const propertyData = listRes.data?.find((p: any) => p.id === Number(params.propertyId))
+        if (propertyData) {
+          setProperty(propertyData)
+          setProperties(listRes.data || [])
         }
-        if (roomRes.success && roomRes.data) {
-          setRoom(roomRes.data)
+
+        // 從 rooms 列表中找到對應的 room
+        const roomData = roomsRes.data?.find((r: any) => r.id === Number(params.roomId))
+        if (roomData) {
+          setRoom(roomData)
         }
+
         if (payRes.success && payRes.data) {
           setPayments(payRes.data)
         }
