@@ -53,9 +53,24 @@ function errorResponse(error, message) {
  */
 function sendResponse(res, statusCode, data) {
   try {
+    const allowedOrigins = [
+      'https://taiwan-landlord-vietnam-tenant-syst.vercel.app',
+      'https://taiwan-landlord-vietnam-tenant-system-p45l60q8a.vercel.app',
+      'https://taiwan-landlord-vietnam-tenan-git-1d16cc-leo124805290s-projects.vercel.app',
+      'http://localhost:3000'
+    ];
+
+    const origin = req.headers.origin;
+    let corsOrigin = allowedOrigins[0];
+
+    if (origin && allowedOrigins.includes(origin)) {
+      corsOrigin = origin;
+    }
+
     res.writeHead(statusCode, {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': corsOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Content-Type': 'application/json'
     });
     res.end(JSON.stringify(data));
