@@ -143,6 +143,10 @@ export const propertyAPI = {
     return apiRequest<any[]>('/properties');
   },
 
+  get: async (id: string | number): Promise<ApiResult<any>> => {
+    return apiRequest<any>(`/properties/${id}`);
+  },
+
   create: async (data: { name: string; address?: string }): Promise<ApiResult<any>> => {
     return apiRequest<any>('/properties', {
       method: 'POST',
