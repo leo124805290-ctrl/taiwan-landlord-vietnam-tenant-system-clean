@@ -6,7 +6,12 @@
   "framework": "nextjs",
   "regions": ["hkg1"],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "NEXT_PUBLIC_API_URL": "https://taiwan-landlord-vietnam-tenant-system.zeabur.app/api",
+    "NEXT_PUBLIC_APP_NAME": "台灣房東越南租客管理系統",
+    "NEXT_PUBLIC_APP_DESCRIPTION": "專為台灣房東管理越南租客設計的管理平台",
+    "NEXT_PUBLIC_ENABLE_MULTI_LANGUAGE": "true",
+    "NEXT_PUBLIC_ENABLE_DEMO_DATA": "false"
   },
   "headers": [
     {
