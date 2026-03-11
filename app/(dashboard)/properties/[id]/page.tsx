@@ -18,20 +18,22 @@ export default function PropertyDetailPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [propRes, roomsRes, listRes] = await Promise.all([
-          propertyAPI.get(params.id as string),
-          roomAPI.list({ property_id: Number(params.id) }),
+        const [listRes] = await Promise.all([
           propertyAPI.list()
         ])
 
-        if (propRes.success && propRes.data) {
-          setProperty(propRes.data)
+        // 從 list 中找到對應的 property
+        const propertyData = listRes.data?.find((p: any) => p.id === Number(params.id))
+        if (propertyData) {
+          setProperty(propertyData)
+          setProperties(listRes.data || [])
         }
+
+        // 用找到的 property ID 來獲取房間
+        const propertyId = propertyData?.id || Number(params.id)
+        const roomsRes = await roomAPI.list({ property_id: propertyId })
         if (roomsRes.success && roomsRes.data) {
           setRooms(roomsRes.data)
-        }
-        if (listRes.success && listRes.data) {
-          setProperties(listRes.data)
         }
       } catch (err) {
         console.error('Failed to load property:', err)
