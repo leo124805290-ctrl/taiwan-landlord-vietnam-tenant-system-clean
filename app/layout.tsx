@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { AppProvider } from '@/contexts/AppContext'
+import { I18nProvider } from '@/contexts/I18nContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -24,7 +25,9 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen`}>
         <AppProvider>
-          {children}
+          <I18nProvider>
+            {children}
+          </I18nProvider>
         </AppProvider>
       </body>
     </html>

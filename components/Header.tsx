@@ -2,11 +2,15 @@
 
 import { t } from '@/lib/translations'
 import { useApp } from '@/contexts/AppContext'
+import { useI18n } from '@/contexts/I18nContext'
+import { useRole } from '@/contexts/RoleContext'
 
 export default function Header() {
   const { state, updateState, updateData, openModal, getCurrentProperty } = useApp()
+  const { t: tI18n, lang, setLang } = useI18n()
+  const { isReadonly, isSuperadmin } = useRole()
   const property = getCurrentProperty()
-  const tabs = [
+  const allTabs = [
     { key: 'rooms', icon: '🏠', label: 'roomsTab' },
     { key: 'payments', icon: '💵', label: 'paymentsTab' },
     { key: 'deposit-management', icon: '💰', label: 'depositManagementTab' },
@@ -15,6 +19,7 @@ export default function Header() {
     { key: 'backfill-checkin', icon: '📅', label: 'backfillCheckInTab' },
     { key: 'backfill-history', icon: '📊', label: 'backfillHistoryTab' },
   ]
+  const tabs = isSuperadmin ? allTabs : allTabs.filter((tab) => tab.key !== 'settings')
 
   return (
     <header className="bg-white shadow-lg sticky top-0 z-40">
@@ -63,37 +68,39 @@ export default function Header() {
           </div>
           
           <div className="flex gap-2 w-full md:w-auto justify-end">
-            {/* 語言切換 */}
+            {/* 語言切換 (localStorage) */}
             <div className="flex gap-1">
               <button 
-                onClick={() => updateState({ lang: 'zh-TW' })}
+                onClick={() => setLang('zh-TW')}
                 className={`px-2 md:px-3 py-2 rounded-lg font-medium text-xs md:text-sm ${
-                  state.lang === 'zh-TW' 
+                  lang === 'zh-TW' 
                     ? 'bg-blue-600 text-white' 
                     : 'bg-gray-200'
                 }`}
               >
-                中文
+                {tI18n('langZh')}
               </button>
               <button 
-                onClick={() => updateState({ lang: 'vi-VN' })}
+                onClick={() => setLang('vi')}
                 className={`px-2 md:px-3 py-2 rounded-lg font-medium text-xs md:text-sm ${
-                  state.lang === 'vi-VN' 
+                  lang === 'vi' 
                     ? 'bg-blue-600 text-white' 
                     : 'bg-gray-200'
                 }`}
               >
-                VN
+                {tI18n('langVi')}
               </button>
             </div>
             
-            {/* 新增物業按鈕 */}
-            <button 
-              onClick={() => openModal('addProperty')}
-              className="px-3 md:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-xs md:text-sm whitespace-nowrap"
-            >
-              ➕ {t('addProperty', state.lang)}
-            </button>
+            {/* 新增物業按鈕 (readonly 隱藏) */}
+            {!isReadonly && (
+              <button 
+                onClick={() => openModal('addProperty')}
+                className="px-3 md:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-xs md:text-sm whitespace-nowrap"
+              >
+                ➕ {t('addProperty', state.lang)}
+              </button>
+            )}
           </div>
         </div>
 
@@ -119,6 +126,7 @@ export default function Header() {
 
                             <div className="font-bold text-sm">{prop.name}</div>
 
+                            {!isReadonly && (
                             <button 
 
                               onClick={(e) => {
@@ -168,6 +176,7 @@ export default function Header() {
                               ✕
 
                             </button>
+                            )}
 
                           </div>
               <div className="text-xs opacity-75">

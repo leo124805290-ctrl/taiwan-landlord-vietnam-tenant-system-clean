@@ -3,17 +3,19 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { paymentAPI, propertyAPI, roomAPI } from '@/lib/api'
+import { useI18n } from '@/contexts/I18nContext'
+import { useRole } from '@/contexts/RoleContext'
 
-const PAYMENT_TYPES = [
-  { value: 'rent', label: '租金' },
-  { value: 'deposit', label: '押金' },
-  { value: 'electric', label: '電費' },
-  { value: 'water', label: '水費' },
-  { value: 'laundry', label: '洗衣機收入' },
-  { value: 'booking', label: '訂金' },
-  { value: 'deposit_return', label: '退押金' },
-  { value: 'other', label: '其他' },
-]
+const PAYMENT_TYPE_KEYS: Record<string, string> = {
+  rent: 'typeRent',
+  deposit: 'typeDeposit',
+  electric: 'typeElectric',
+  water: 'typeWater',
+  laundry: 'typeLaundry',
+  booking: 'typeBooking',
+  deposit_return: 'typeDepositReturn',
+  other: 'typeOther',
+}
 
 type Payment = {
   id: number
@@ -28,6 +30,8 @@ type Payment = {
 }
 
 export default function PaymentsPage() {
+  const { t } = useI18n()
+  const { isReadonly } = useRole()
   const [list, setList] = useState<Payment[]>([])
   const [properties, setProperties] = useState<{ id: number; name: string }[]>([])
   const [rooms, setRooms] = useState<{ id: number; room_number: string }[]>([])
@@ -92,7 +96,7 @@ export default function PaymentsPage() {
     e.preventDefault()
     const amount = Number(addForm.amount)
     if (!addForm.property_id || !addForm.type || !Number.isFinite(amount) || amount <= 0) {
-      setError('請選擇物業、類型並填寫有效金額')
+      setError(t('validationError'))
       return
     }
     setSubmitting(true)
@@ -127,13 +131,13 @@ export default function PaymentsPage() {
     }
   }
 
-  const typeLabel = (type: string) => PAYMENT_TYPES.find((t) => t.value === type)?.label ?? type
+  const typeLabel = (type: string) => t(PAYMENT_TYPE_KEYS[type] || 'typeOther')
 
   return (
     <div className="max-w-5xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
-        <Link href="/" className="text-gray-600 hover:text-gray-900">← 返回</Link>
-        <h1 className="text-2xl font-bold">收款管理</h1>
+        <Link href="/" className="text-gray-600 hover:text-gray-900">← {t('back')}</Link>
+        <h1 className="text-2xl font-bold">{t('paymentsTitle')}</h1>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2 items-center">
@@ -142,7 +146,7 @@ export default function PaymentsPage() {
           onChange={(e) => setFilterProperty(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm"
         >
-          <option value="">全部物業</option>
+          <option value="">{t('allProperties')}</option>
           {properties.map((p) => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
@@ -152,7 +156,7 @@ export default function PaymentsPage() {
           onChange={(e) => setFilterRoom(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm"
         >
-          <option value="">全部房間</option>
+          <option value="">{t('allRooms')}</option>
           {rooms.map((r) => (
             <option key={r.id} value={r.id}>#{r.room_number}</option>
           ))}
@@ -162,9 +166,9 @@ export default function PaymentsPage() {
           onChange={(e) => setFilterType(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm"
         >
-          <option value="">全部類型</option>
-          {PAYMENT_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>{t.label}</option>
+          <option value="">{t('allTypes')}</option>
+          {Object.entries(PAYMENT_TYPE_KEYS).map(([value, key]) => (
+            <option key={value} value={value}>{t(key)}</option>
           ))}
         </select>
         <input
@@ -181,6 +185,7 @@ export default function PaymentsPage() {
           className="border rounded-lg px-3 py-2 text-sm"
           placeholder="訖日"
         />
+        {!isReadonly && (
         <button
           type="button"
           onClick={() => {
@@ -189,21 +194,22 @@ export default function PaymentsPage() {
           }}
           className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium"
         >
-          新增收款
+          {t('addPayment')}
         </button>
+        )}
       </div>
 
       {loading ? (
-        <p className="text-gray-500 py-8">載入中...</p>
+        <p className="text-gray-500 py-8">{t('loading')}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse border border-gray-200">
             <thead>
               <tr className="bg-gray-50">
-                <th className="border border-gray-200 px-3 py-2 text-left text-sm">日期</th>
-                <th className="border border-gray-200 px-3 py-2 text-left text-sm">類型</th>
-                <th className="border border-gray-200 px-3 py-2 text-right text-sm">金額</th>
-                <th className="border border-gray-200 px-3 py-2 text-left text-sm">備註</th>
+                <th className="border border-gray-200 px-3 py-2 text-left text-sm">{t('date')}</th>
+                <th className="border border-gray-200 px-3 py-2 text-left text-sm">{t('type')}</th>
+                <th className="border border-gray-200 px-3 py-2 text-right text-sm">{t('amount')}</th>
+                <th className="border border-gray-200 px-3 py-2 text-left text-sm">{t('note')}</th>
               </tr>
             </thead>
             <tbody>
@@ -220,7 +226,7 @@ export default function PaymentsPage() {
             </tbody>
           </table>
           {list.length === 0 && (
-            <p className="text-gray-500 py-6 text-center">尚無收款記錄</p>
+            <p className="text-gray-500 py-6 text-center">{t('noPayments')}</p>
           )}
         </div>
       )}
@@ -228,10 +234,10 @@ export default function PaymentsPage() {
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setShowAdd(false)}>
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold mb-4">新增收款</h2>
+            <h2 className="text-xl font-bold mb-4">{t('addPayment')}</h2>
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">物業 *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('propertyRequired')}</label>
                 <select
                   value={addForm.property_id}
                   onChange={(e) => setAddForm((f) => ({ ...f, property_id: Number(e.target.value) }))}
@@ -239,27 +245,27 @@ export default function PaymentsPage() {
                   required
                   disabled={submitting}
                 >
-                  <option value={0}>請選擇</option>
+                  <option value={0}>{t('selectProperty')}</option>
                   {properties.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">類型 *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('typeRequired')}</label>
                 <select
                   value={addForm.type}
                   onChange={(e) => setAddForm((f) => ({ ...f, type: e.target.value }))}
                   className="w-full border rounded-lg px-3 py-2"
                   disabled={submitting}
                 >
-                  {PAYMENT_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                  {Object.entries(PAYMENT_TYPE_KEYS).map(([value, key]) => (
+                    <option key={value} value={value}>{t(key)}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">金額 *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('amount')} *</label>
                 <input
                   type="number"
                   min={0}
@@ -272,7 +278,7 @@ export default function PaymentsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">收款日期</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('paymentDate')}</label>
                 <input
                   type="date"
                   value={addForm.paid_date}
@@ -282,7 +288,7 @@ export default function PaymentsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">備註</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('note')}</label>
                 <input
                   type="text"
                   value={addForm.note}
@@ -299,14 +305,14 @@ export default function PaymentsPage() {
                   className="flex-1 py-2 border rounded-lg"
                   disabled={submitting}
                 >
-                  取消
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="flex-1 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50"
                 >
-                  {submitting ? '處理中...' : '新增'}
+                  {submitting ? t('submitting') : t('add')}
                 </button>
               </div>
             </form>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { checkoutAPI, settingsAPI } from '@/lib/api'
+import { useI18n } from '@/contexts/I18nContext'
 
 type Room = {
   id: number
@@ -21,6 +22,7 @@ type Props = {
 const ELECTRIC_RATE_DEFAULT = 6
 
 export function CheckoutModal({ room, onClose, onSuccess }: Props) {
+  const { t } = useI18n()
   const [checkout_date, setCheckoutDate] = useState(
     new Date().toISOString().slice(0, 10),
   )
@@ -51,7 +53,7 @@ export function CheckoutModal({ room, onClose, onSuccess }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (finalMeterNum < prevMeter) {
-      setError('最終度數不可小於上次度數')
+      setError(t('finalMeterInvalid'))
       return
     }
     setSubmitting(true)
@@ -80,7 +82,7 @@ export function CheckoutModal({ room, onClose, onSuccess }: Props) {
         onClose()
         return
       }
-      setError(res.error || '退租失敗')
+      setError(res.error || t('checkoutFailed'))
     } catch (err: any) {
       setError(err?.message || '網路錯誤')
     } finally {
@@ -95,13 +97,13 @@ export function CheckoutModal({ room, onClose, onSuccess }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
-          <h2 className="text-xl font-bold mb-4">辦理退租 · #{room.room_number}</h2>
+          <h2 className="text-xl font-bold mb-4">{t('checkoutTitle')} · #{room.room_number}</h2>
           {room.tenant_name && (
-            <p className="text-gray-600 mb-4">租客：{room.tenant_name}</p>
+            <p className="text-gray-600 mb-4">{t('tenant')}：{room.tenant_name}</p>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">退租日期 *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('checkoutDate')}</label>
               <input
                 type="date"
                 value={checkout_date}
@@ -112,7 +114,7 @@ export function CheckoutModal({ room, onClose, onSuccess }: Props) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">最終水電度數 *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('finalMeter')}</label>
               <input
                 type="number"
                 min={prevMeter}
@@ -122,31 +124,31 @@ export function CheckoutModal({ room, onClose, onSuccess }: Props) {
                 required
                 disabled={submitting}
               />
-              <p className="text-xs text-gray-500 mt-1">上次度數：{prevMeter}</p>
+              <p className="text-xs text-gray-500 mt-1">{t('lastMeter')}：{prevMeter}</p>
             </div>
             <div className="p-3 bg-amber-50 rounded-lg">
-              <p className="text-sm font-medium text-gray-700">計算後電費</p>
+              <p className="text-sm font-medium text-gray-700">{t('calculatedElectric')}</p>
               <p className="text-lg font-semibold">
-                用電 {usage} 度 × {electricRate} 元 = NT$ {calculatedElectric}
+                {usage} {t('degree')} × {electricRate} = NT$ {calculatedElectric}
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">押金處理</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('depositAction')}</label>
               <select
                 value={deposit_action}
                 onChange={(e) => setDepositAction(e.target.value as any)}
                 className="w-full border rounded-lg px-3 py-2"
                 disabled={submitting}
               >
-                <option value="return">退還</option>
-                <option value="deduct">扣押</option>
-                <option value="partial">部分退還</option>
+                <option value="return">{t('depositReturn')}</option>
+                <option value="deduct">{t('depositDeduct')}</option>
+                <option value="partial">{t('depositPartial')}</option>
               </select>
             </div>
             {(deposit_action === 'return' || deposit_action === 'partial') && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {deposit_action === 'return' ? '退還金額' : '退還金額（部分）'}
+                  {t('refundAmount')}
                 </label>
                 <input
                   type="number"
@@ -159,7 +161,7 @@ export function CheckoutModal({ room, onClose, onSuccess }: Props) {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">備註</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('note')}</label>
               <input
                 type="text"
                 value={note}
@@ -178,14 +180,14 @@ export function CheckoutModal({ room, onClose, onSuccess }: Props) {
                 className="flex-1 py-2 border rounded-lg text-gray-700"
                 disabled={submitting}
               >
-                取消
+                {t('cancel')}
               </button>
               <button
                 type="submit"
                 disabled={submitting}
                 className="flex-1 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50"
               >
-                {submitting ? '處理中...' : '確認退租'}
+                {submitting ? t('submitting') : t('confirmCheckout')}
               </button>
             </div>
           </form>

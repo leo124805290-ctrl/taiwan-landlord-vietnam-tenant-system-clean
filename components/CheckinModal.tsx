@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { roomAPI, checkinAPI } from '@/lib/api'
+import { useI18n } from '@/contexts/I18nContext'
 
 type Room = {
   id: number
@@ -20,6 +21,7 @@ type Props = {
 }
 
 export function CheckinModal({ room, onClose, onSuccess }: Props) {
+  const { t } = useI18n()
   const [tenant_name, setTenantName] = useState('')
   const [phone, setPhone] = useState('')
   const [nationality, setNationality] = useState('')
@@ -37,7 +39,7 @@ export function CheckinModal({ room, onClose, onSuccess }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!tenant_name.trim() || !contract_start) {
-      setError('請填寫租客姓名與合約起日')
+      setError(t('validationError'))
       return
     }
     setSubmitting(true)
@@ -48,7 +50,7 @@ export function CheckinModal({ room, onClose, onSuccess }: Props) {
     try {
       const lockRes = await roomAPI.lock(room.id)
       if (!lockRes.success) {
-        setError(lockRes.error || '鎖定房間失敗')
+        setError(lockRes.error || t('lockFailed'))
         setSubmitting(false)
         return
       }
@@ -72,7 +74,7 @@ export function CheckinModal({ room, onClose, onSuccess }: Props) {
         onClose()
         return
       }
-      setError(res.error || '入住失敗')
+      setError(res.error || t('checkinFailed'))
     } catch (err: any) {
       setError(err?.message || '網路錯誤')
     } finally {
@@ -87,10 +89,10 @@ export function CheckinModal({ room, onClose, onSuccess }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
-          <h2 className="text-xl font-bold mb-4">辦理入住 · #{room.room_number}</h2>
+          <h2 className="text-xl font-bold mb-4">{t('checkinTitle')} · #{room.room_number}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">租客姓名 *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('tenantNameRequired')}</label>
               <input
                 type="text"
                 value={tenant_name}
@@ -101,7 +103,7 @@ export function CheckinModal({ room, onClose, onSuccess }: Props) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">電話</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')}</label>
               <input
                 type="text"
                 value={phone}
@@ -111,7 +113,7 @@ export function CheckinModal({ room, onClose, onSuccess }: Props) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">國籍</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('nationality')}</label>
               <input
                 type="text"
                 value={nationality}
@@ -122,7 +124,7 @@ export function CheckinModal({ room, onClose, onSuccess }: Props) {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">合約起日 *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('contractStart')}</label>
                 <input
                   type="date"
                   value={contract_start}
@@ -133,7 +135,7 @@ export function CheckinModal({ room, onClose, onSuccess }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">合約訖日</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('contractEnd')}</label>
                 <input
                   type="date"
                   value={contract_end}
@@ -144,20 +146,20 @@ export function CheckinModal({ room, onClose, onSuccess }: Props) {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">付款方式</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('paymentType')}</label>
               <select
                 value={payment_type}
                 onChange={(e) => setPaymentType(e.target.value as any)}
                 className="w-full border rounded-lg px-3 py-2"
                 disabled={submitting}
               >
-                <option value="full">全額（租金+押金）</option>
-                <option value="deposit_only">僅押金</option>
-                <option value="booking_only">僅訂金</option>
+                <option value="full">{t('paymentFull')}</option>
+                <option value="deposit_only">{t('paymentDepositOnly')}</option>
+                <option value="booking_only">{t('paymentBookingOnly')}</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">水電錶初始值</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('initialMeter')}</label>
               <input
                 type="number"
                 min={0}
@@ -177,14 +179,14 @@ export function CheckinModal({ room, onClose, onSuccess }: Props) {
                 className="flex-1 py-2 border rounded-lg text-gray-700"
                 disabled={submitting}
               >
-                取消
+                {t('cancel')}
               </button>
               <button
                 type="submit"
                 disabled={submitting}
                 className="flex-1 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50"
               >
-                {submitting ? '處理中...' : '確認入住'}
+                {submitting ? t('submitting') : t('confirmCheckin')}
               </button>
             </div>
           </form>

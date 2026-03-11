@@ -3,15 +3,17 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { costAPI, propertyAPI } from '@/lib/api'
+import { useI18n } from '@/contexts/I18nContext'
+import { useRole } from '@/contexts/RoleContext'
 
-const COST_CATEGORIES = [
-  { value: 'partition', label: '隔間' },
-  { value: 'ac', label: '冷氣' },
-  { value: 'utility_install', label: '水電安裝' },
-  { value: 'furniture', label: '家具' },
-  { value: 'maintenance', label: '維修' },
-  { value: 'other', label: '其他' },
-]
+const COST_CATEGORY_KEYS: Record<string, string> = {
+  partition: 'categoryPartition',
+  ac: 'categoryAC',
+  utility_install: 'categoryUtilityInstall',
+  furniture: 'categoryFurniture',
+  maintenance: 'categoryMaintenance',
+  other: 'categoryOther',
+}
 
 type Cost = {
   id: number
@@ -27,6 +29,8 @@ type Cost = {
 }
 
 export default function CostsPage() {
+  const { t } = useI18n()
+  const { isReadonly } = useRole()
   const [list, setList] = useState<Cost[]>([])
   const [properties, setProperties] = useState<{ id: number; name: string }[]>([])
   const [loading, setLoading] = useState(true)
@@ -79,7 +83,7 @@ export default function CostsPage() {
     e.preventDefault()
     const amount = Number(addForm.amount)
     if (!addForm.property_id || !addForm.category || !Number.isFinite(amount) || amount <= 0) {
-      setError('請選擇物業、類型並填寫有效金額')
+      setError(t('validationError'))
       return
     }
     setSubmitting(true)
@@ -116,13 +120,13 @@ export default function CostsPage() {
     }
   }
 
-  const categoryLabel = (cat: string) => COST_CATEGORIES.find((c) => c.value === cat)?.label ?? cat
+  const categoryLabel = (cat: string) => t(COST_CATEGORY_KEYS[cat] || 'categoryOther')
 
   return (
     <div className="max-w-5xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
-        <Link href="/" className="text-gray-600 hover:text-gray-900">← 返回</Link>
-        <h1 className="text-2xl font-bold">支出管理</h1>
+        <Link href="/" className="text-gray-600 hover:text-gray-900">← {t('back')}</Link>
+        <h1 className="text-2xl font-bold">{t('costsTitle')}</h1>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2 items-center">
@@ -131,7 +135,7 @@ export default function CostsPage() {
           onChange={(e) => setFilterProperty(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm"
         >
-          <option value="">全部物業</option>
+          <option value="">{t('allProperties')}</option>
           {properties.map((p) => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
@@ -141,9 +145,9 @@ export default function CostsPage() {
           onChange={(e) => setFilterCategory(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm"
         >
-          <option value="">全部類型</option>
-          {COST_CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
+          <option value="">{t('allTypes')}</option>
+          {Object.entries(COST_CATEGORY_KEYS).map(([value, key]) => (
+            <option key={value} value={value}>{t(key)}</option>
           ))}
         </select>
         <select
@@ -151,9 +155,9 @@ export default function CostsPage() {
           onChange={(e) => setFilterInitial(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm"
         >
-          <option value="">全部</option>
-          <option value="true">初始成本</option>
-          <option value="false">日常支出</option>
+          <option value="">{t('all')}</option>
+          <option value="true">{t('initialCost')}</option>
+          <option value="false">{t('dailyExpense')}</option>
         </select>
         <input
           type="date"
@@ -167,6 +171,7 @@ export default function CostsPage() {
           onChange={(e) => setFilterDateTo(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm"
         />
+        {!isReadonly && (
         <button
           type="button"
           onClick={() => {
@@ -175,22 +180,23 @@ export default function CostsPage() {
           }}
           className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium"
         >
-          新增支出
+          {t('addCost')}
         </button>
+        )}
       </div>
 
       {loading ? (
-        <p className="text-gray-500 py-8">載入中...</p>
+        <p className="text-gray-500 py-8">{t('loading')}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse border border-gray-200">
             <thead>
               <tr className="bg-gray-50">
-                <th className="border border-gray-200 px-3 py-2 text-left text-sm">日期</th>
-                <th className="border border-gray-200 px-3 py-2 text-left text-sm">類型</th>
-                <th className="border border-gray-200 px-3 py-2 text-left text-sm">性質</th>
-                <th className="border border-gray-200 px-3 py-2 text-right text-sm">金額</th>
-                <th className="border border-gray-200 px-3 py-2 text-left text-sm">備註</th>
+                <th className="border border-gray-200 px-3 py-2 text-left text-sm">{t('date')}</th>
+                <th className="border border-gray-200 px-3 py-2 text-left text-sm">{t('type')}</th>
+                <th className="border border-gray-200 px-3 py-2 text-left text-sm">{t('costKind')}</th>
+                <th className="border border-gray-200 px-3 py-2 text-right text-sm">{t('amount')}</th>
+                <th className="border border-gray-200 px-3 py-2 text-left text-sm">{t('note')}</th>
               </tr>
             </thead>
             <tbody>
@@ -201,7 +207,7 @@ export default function CostsPage() {
                   </td>
                   <td className="border border-gray-200 px-3 py-2 text-sm">{categoryLabel(row.category)}</td>
                   <td className="border border-gray-200 px-3 py-2 text-sm">
-                    {row.is_initial ? '初始成本' : '日常支出'}
+                    {row.is_initial ? t('initialCost') : t('dailyExpense')}
                   </td>
                   <td className="border border-gray-200 px-3 py-2 text-sm text-right">NT$ {row.amount}</td>
                   <td className="border border-gray-200 px-3 py-2 text-sm text-gray-600">{row.note ?? '-'}</td>
@@ -210,7 +216,7 @@ export default function CostsPage() {
             </tbody>
           </table>
           {list.length === 0 && (
-            <p className="text-gray-500 py-6 text-center">尚無支出記錄</p>
+            <p className="text-gray-500 py-6 text-center">{t('noCosts')}</p>
           )}
         </div>
       )}
@@ -218,10 +224,10 @@ export default function CostsPage() {
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setShowAdd(false)}>
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold mb-4">新增支出</h2>
+            <h2 className="text-xl font-bold mb-4">{t('addCost')}</h2>
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">物業 *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('propertyRequired')}</label>
                 <select
                   value={addForm.property_id}
                   onChange={(e) => setAddForm((f) => ({ ...f, property_id: Number(e.target.value) }))}
@@ -229,22 +235,22 @@ export default function CostsPage() {
                   required
                   disabled={submitting}
                 >
-                  <option value={0}>請選擇</option>
+                  <option value={0}>{t('selectProperty')}</option>
                   {properties.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">類型 *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('typeRequired')}</label>
                 <select
                   value={addForm.category}
                   onChange={(e) => setAddForm((f) => ({ ...f, category: e.target.value }))}
                   className="w-full border rounded-lg px-3 py-2"
                   disabled={submitting}
                 >
-                  {COST_CATEGORIES.map((c) => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
+                  {Object.entries(COST_CATEGORY_KEYS).map(([value, key]) => (
+                    <option key={value} value={value}>{t(key)}</option>
                   ))}
                 </select>
               </div>
@@ -256,11 +262,11 @@ export default function CostsPage() {
                     onChange={(e) => setAddForm((f) => ({ ...f, is_initial: e.target.checked }))}
                     disabled={submitting}
                   />
-                  <span className="text-sm font-medium text-gray-700">初始成本</span>
+                  <span className="text-sm font-medium text-gray-700">{t('initialCost')}</span>
                 </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">金額 *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('amount')} *</label>
                 <input
                   type="number"
                   min={0}
@@ -273,7 +279,7 @@ export default function CostsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">支出日期</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('costDate')}</label>
                 <input
                   type="date"
                   value={addForm.cost_date}
@@ -283,7 +289,7 @@ export default function CostsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">備註</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('note')}</label>
                 <input
                   type="text"
                   value={addForm.note}
@@ -300,14 +306,14 @@ export default function CostsPage() {
                   className="flex-1 py-2 border rounded-lg"
                   disabled={submitting}
                 >
-                  取消
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="flex-1 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50"
                 >
-                  {submitting ? '處理中...' : '新增'}
+                  {submitting ? t('submitting') : t('add')}
                 </button>
               </div>
             </form>
