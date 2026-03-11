@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { authAPI } from '@/lib/api'
 import { useI18n } from '@/contexts/I18nContext'
@@ -12,6 +12,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // 檢查是否已登入
+  useEffect(() => {
+    if (authAPI.isAuthenticated()) {
+      router.replace('/dashboard')
+    }
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,7 +34,7 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/')
+    router.replace('/dashboard')
   }
 
   return (

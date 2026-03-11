@@ -1,179 +1,129 @@
 'use client'
 
-import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useRouter, useParams } from 'next/navigation'
 import { propertyAPI, roomAPI } from '@/lib/api'
-import { CheckinModal } from '@/components/CheckinModal'
-import { CheckoutModal } from '@/components/CheckoutModal'
-
-type Room = {
-  id: number
-  property_id: number
-  floor: number | null
-  room_number: string
-  monthly_rent: number | null
-  deposit: number | null
-  status: string
-  tenant_name: string | null
-  check_in_date: string | null
-  check_out_date: string | null
-  current_meter: number | null
-  previous_meter: number | null
-}
-
-const STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = {
-  vacant: { label: '空房', bg: 'bg-green-100', text: 'text-green-800' },
-  occupied: { label: '已出租', bg: 'bg-red-100', text: 'text-red-800' },
-  pending: { label: '待入住', bg: 'bg-yellow-100', text: 'text-yellow-800' },
-  maintenance: { label: '維修中', bg: 'bg-gray-200', text: 'text-gray-700' },
-}
+import { useI18n } from '@/contexts/I18nContext'
+import Link from 'next/link'
 
 export default function PropertyDetailPage() {
-  const params = useParams()
   const router = useRouter()
-  const id = Number(params.id)
-  const [property, setProperty] = useState<{ id: number; name: string; address: string | null } | null>(null)
-  const [rooms, setRooms] = useState<Room[]>([])
+  const params = useParams()
+  const { t } = useI18n()
+  const [property, setProperty] = useState<any>(null)
+  const [rooms, setRooms] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [checkinRoom, setCheckinRoom] = useState<Room | null>(null)
-  const [checkoutRoom, setCheckoutRoom] = useState<Room | null>(null)
-
-  const load = async () => {
-    if (!id || Number.isNaN(id)) {
-      setError('無效的物業 ID')
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    setError(null)
-    const [propRes, roomRes] = await Promise.all([
-      propertyAPI.list(),
-      roomAPI.list({ property_id: id }),
-    ])
-    if (!propRes.success || !propRes.data) {
-      setError(propRes.error || '無法載入物業')
-      setLoading(false)
-      return
-    }
-    const found = (propRes.data as any[]).find((p: any) => p.id === id)
-    if (!found) {
-      setError('找不到此物業')
-      setLoading(false)
-      return
-    }
-    setProperty(found)
-    if (roomRes.success && roomRes.data) {
-      setRooms(roomRes.data as Room[])
-    } else {
-      setRooms([])
-    }
-    setLoading(false)
-  }
+  const [properties, setProperties] = useState<any[]>([])
 
   useEffect(() => {
-    load()
-  }, [id])
+    const load = async () => {
+      try {
+        const [propRes, roomsRes, listRes] = await Promise.all([
+          propertyAPI.get(params.id as string),
+          roomAPI.list({ property_id: Number(params.id) }),
+          propertyAPI.list()
+        ])
 
-  const handleCheckinClose = (refreshed: boolean) => {
-    setCheckinRoom(null)
-    if (refreshed) load()
+        if (propRes.success && propRes.data) {
+          setProperty(propRes.data)
+        }
+        if (roomsRes.success && roomsRes.data) {
+          setRooms(roomsRes.data)
+        }
+        if (listRes.success && listRes.data) {
+          setProperties(listRes.data)
+        }
+      } catch (err) {
+        console.error('Failed to load property:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [params.id])
+
+  const handleBack = () => {
+    router.replace('/dashboard')
   }
 
-  const handleCheckoutClose = (refreshed: boolean) => {
-    setCheckoutRoom(null)
-    if (refreshed) load()
+  const switchProperty = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    router.replace(`/properties/${e.target.value}`)
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-gray-500">載入中...</p>
-      </div>
-    )
-  }
-
-  if (error || !property) {
-    return (
-      <div className="max-w-2xl mx-auto py-8 px-4">
-        <p className="text-red-600 mb-4">{error || '找不到物業'}</p>
-        <Link href="/" className="text-blue-600 hover:underline">← 返回首頁</Link>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+        <main className="max-w-7xl mx-auto px-4 py-6 pb-24">
+          <div className="text-gray-500">Loading...</div>
+        </main>
       </div>
     )
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="mb-6 flex items-center gap-4">
-        <Link href="/" className="text-gray-600 hover:text-gray-900">← 返回</Link>
-        <h1 className="text-2xl font-bold">{property.name}</h1>
-      </div>
-      {property.address && (
-        <p className="text-gray-600 mb-6">地址：{property.address}</p>
-      )}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+      <main className="max-w-7xl mx-auto px-4 py-6 pb-24">
+        <div className="flex items-center justify-between mb-6">
+          <a href="/dashboard" className="text-blue-600 hover:text-blue-700 font-medium">
+            ← {t('back')}
+          </a>
+          <select
+            value={params.id as string}
+            onChange={switchProperty}
+            className="border rounded-lg px-3 py-2 text-sm"
+          >
+            {properties.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {rooms.map((room) => {
-          const statusInfo = STATUS_MAP[room.status] || { label: room.status, bg: 'bg-gray-100', text: 'text-gray-800' }
-          const isVacant = room.status === 'vacant' || room.status === 'pending'
-          const isOccupied = room.status === 'occupied'
+        <div className="card bg-white p-6 rounded-xl shadow-md mb-6">
+          <h1 className="text-3xl font-bold mb-4">{property?.name}</h1>
+          <p className="text-gray-600">{property?.address || 'No address'}</p>
+        </div>
 
-          return (
-            <div
-              key={room.id}
-              onClick={() => {
-                if (isVacant) setCheckinRoom(room)
-                if (isOccupied) setCheckoutRoom(room)
-              }}
-              className={`
-                rounded-xl border p-4 cursor-pointer transition
-                ${isVacant || isOccupied ? 'hover:shadow-md hover:border-blue-300' : ''}
-                ${!isVacant && !isOccupied ? 'cursor-default opacity-90' : ''}
-              `}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <span className="font-semibold text-lg">#{room.room_number}</span>
-                <span className={`px-2 py-0.5 rounded text-sm ${statusInfo.bg} ${statusInfo.text}`}>
-                  {statusInfo.label}
-                </span>
-              </div>
-              <div className="text-sm text-gray-600 space-y-1">
-                {room.floor != null && <p>樓層：{room.floor}</p>}
-                <p>月租：{room.monthly_rent != null ? `NT$ ${room.monthly_rent}` : '-'}</p>
-                {isOccupied && room.tenant_name && (
-                  <>
-                    <p>租客：{room.tenant_name}</p>
-                    {room.check_in_date && (
-                      <p>入住：{new Date(room.check_in_date).toLocaleDateString('zh-TW')}</p>
-                    )}
-                  </>
-                )}
-              </div>
-              {(isVacant || isOccupied) && (
-                <p className="mt-2 text-xs text-blue-600">
-                  {isVacant ? '點擊辦理入住' : '點擊辦理退租'}
-                </p>
-              )}
+        <h2 className="text-2xl font-bold mb-4">
+          {t('rooms')} ({rooms.length})
+        </h2>
+
+        <div className="grid gap-4">
+          {rooms.length === 0 ? (
+            <div className="card bg-white p-6 rounded-xl text-center text-gray-500">
+              {t('noRooms')}
             </div>
-          )
-        })}
-      </div>
-
-      {checkinRoom && (
-        <CheckinModal
-          room={checkinRoom}
-          onClose={() => handleCheckinClose(false)}
-          onSuccess={() => handleCheckinClose(true)}
-        />
-      )}
-      {checkoutRoom && (
-        <CheckoutModal
-          room={checkoutRoom}
-          onClose={() => handleCheckoutClose(false)}
-          onSuccess={() => handleCheckoutClose(true)}
-        />
-      )}
+          ) : (
+            rooms.map((room) => (
+              <Link
+                key={room.id}
+                href={`/properties/${property.id}/rooms/${room.id}`}
+                className="card bg-white p-4 rounded-lg hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg">#{room.room_number}</h3>
+                    <p className="text-sm text-gray-600">
+                      {room.floor ? `Floor ${room.floor} • ` : ''}
+                      ${room.monthly_rent ? `Rent: NT$${room.monthly_rent}` : ''}
+                    </p>
+                    {room.status && (
+                      <span
+                        className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium ${
+                          room.status === 'occupied'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {t(room.status)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
+      </main>
     </div>
   )
 }
