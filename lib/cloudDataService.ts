@@ -117,12 +117,12 @@ export class CloudDataService {
       // 2. 獲取物業列表
       const propertiesResult = await api.property.list();
       if (!propertiesResult.success) {
-        throw new Error(`獲取物業失敗: ${propertiesResult.message}`);
+        throw new Error(`獲取物業失敗: ${propertiesResult.error}`);
       }
 
       // 3. 更新本地緩存
       this.localCache = {
-        properties: propertiesResult.data.properties || [],
+        properties: Array.isArray(propertiesResult.data) ? propertiesResult.data : [],
         rooms: [], // 暫時為空，需要實現房間 API
         payments: [], // 暫時為空，需要實現付款 API
         lastSync: new Date().toISOString(),
@@ -262,7 +262,7 @@ export class CloudDataService {
       const result = await api.property.create(data);
       
       if (!result.success) {
-        throw new Error(result.message);
+        throw new Error(result.error);
       }
 
       // 3. 更新本地緩存
@@ -322,7 +322,156 @@ export class CloudDataService {
   }
 }
 
-// 導出單例
+// ---------------------------------------------------------------------------
+// 新版雲端 API：直接對接後端 Express（/api/...）
+// ---------------------------------------------------------------------------
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+
+export interface ApiResult<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+const getAuthToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem('auth_token');
+  } catch {
+    return null;
+  }
+};
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
+  try {
+    const token = getAuthToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    };
+
+    if (token) {
+      (headers as any).Authorization = `Bearer ${token}`;
+    }
+
+    const url = `${API_URL}${path}`;
+    const res = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    const text = await res.text();
+    let json: any = null;
+    if (text) {
+      try {
+        json = JSON.parse(text);
+      } catch {
+        // ignore parse error, treat as plain text
+      }
+    }
+
+    if (!res.ok) {
+      const message = json?.error || json?.message || `HTTP ${res.status}`;
+      return { success: false, error: message };
+    }
+
+    if (json && json.success === false) {
+      return { success: false, error: json.error || json.message || '未知錯誤' };
+    }
+
+    const data = json && Object.prototype.hasOwnProperty.call(json, 'data') ? json.data : json;
+    return { success: true, data };
+  } catch (err: any) {
+    console.error('[cloudDataService request] error:', err);
+    return { success: false, error: err?.message || '網路錯誤' };
+  }
+}
+
+// 1. 取得物業列表
+export async function getProperties(): Promise<ApiResult<any[]>> {
+  return request<any[]>('/properties');
+}
+
+// 2. 新增物業
+export async function createProperty(
+  name: string,
+  address?: string,
+): Promise<ApiResult<any>> {
+  return request<any>('/properties', {
+    method: 'POST',
+    body: JSON.stringify({ name, address }),
+  });
+}
+
+// 3. 更新物業
+export async function updateProperty(
+  id: number,
+  name: string,
+  address?: string,
+): Promise<ApiResult<any>> {
+  return request<any>(`/properties/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name, address }),
+  });
+}
+
+// 4. 刪除物業
+export async function deleteProperty(id: number): Promise<ApiResult<null>> {
+  return request<null>(`/properties/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// 5. 取得房間列表（可選物業過濾）
+export async function getRooms(propertyId?: number): Promise<ApiResult<any[]>> {
+  const params = new URLSearchParams();
+  if (propertyId) {
+    params.append('property_id', propertyId.toString());
+  }
+  const qs = params.toString();
+  const path = `/rooms${qs ? `?${qs}` : ''}`;
+  return request<any[]>(path);
+}
+
+// 6. 新增房間
+export async function createRoom(data: any): Promise<ApiResult<any>> {
+  return request<any>('/rooms', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// 7. 更新房間
+export async function updateRoom(id: number, data: any): Promise<ApiResult<any>> {
+  return request<any>(`/rooms/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+// 8. 刪除房間
+export async function deleteRoom(id: number): Promise<ApiResult<null>> {
+  return request<null>(`/rooms/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// 9. 鎖定房間
+export async function lockRoom(id: number): Promise<ApiResult<null>> {
+  return request<null>(`/rooms/${id}/lock`, {
+    method: 'POST',
+  });
+}
+
+// 10. 解鎖房間
+export async function unlockRoom(id: number): Promise<ApiResult<null>> {
+  return request<null>(`/rooms/${id}/unlock`, {
+    method: 'POST',
+  });
+}
+
+// 導出單例（舊版本地快取仍可使用）
 export const cloudData = CloudDataService.getInstance();
 
 // React Hook
