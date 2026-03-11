@@ -4,13 +4,16 @@ import { Room, RoomStatus, Payment } from '@/lib/types'
 import { t } from '@/lib/translations'
 import { formatCurrency, formatDate, getMonthEndDate, getNextMonthEndDate } from '@/lib/utils'
 import { useApp } from '@/contexts/AppContext'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { propertyAPI, roomAPI, ApiResult } from '@/lib/api'
 
 export default function Modal() {
   const { state, updateState, updateData, reloadFromCloud, closeModal, getCurrentProperty } = useApp()
   
   const type = state.modal?.type || ''
   const data = state.modal?.data
+  const [isSavingProperty, setIsSavingProperty] = useState(false)
+  const [isSavingRoom, setIsSavingRoom] = useState(false)
   
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -218,8 +221,14 @@ export default function Modal() {
               <button onClick={closeModal} className="flex-1 btn bg-gray-200">
                 {t('cancel', state.lang)}
               </button>
-              <button onClick={saveAddPropertyWithRooms} className="flex-1 btn btn-primary">
-                🏢 {t('save', state.lang)} & {t('generateRooms', state.lang)}
+              <button
+                onClick={saveAddPropertyWithRooms}
+                disabled={isSavingProperty}
+                className={`flex-1 btn btn-primary ${isSavingProperty ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                {isSavingProperty
+                  ? '處理中...'
+                  : <>🏢 {t('save', state.lang)} & {t('generateRooms', state.lang)}</>}
               </button>
             </div>
           </>
@@ -283,8 +292,12 @@ export default function Modal() {
               <button onClick={closeModal} className="flex-1 btn bg-gray-200">
                 {t('cancel', state.lang)}
               </button>
-              <button onClick={saveAddRoom} className="flex-1 btn btn-primary">
-                {t('save', state.lang)}
+              <button
+                onClick={saveAddRoom}
+                disabled={isSavingRoom}
+                className={`flex-1 btn btn-primary ${isSavingRoom ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                {isSavingRoom ? '處理中...' : t('save', state.lang)}
               </button>
             </div>
           </>
@@ -3139,6 +3152,8 @@ export default function Modal() {
 
   // 儲存新增物業（帶快速房間設定）
   const saveAddPropertyWithRooms = async () => {
+    if (isSavingProperty) return
+
     const nameInput = document.getElementById('pname') as HTMLInputElement
     const addrInput = document.getElementById('paddr') as HTMLInputElement
     const floorsInput = document.getElementById('pfloors') as HTMLInputElement
@@ -3166,21 +3181,17 @@ export default function Modal() {
     }
 
     try {
+      setIsSavingProperty(true)
+
       // 1. 先呼叫後端 API 新增物業，取得真實 ID
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const propRes = await fetch(`${API_URL}/properties`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: nameInput.value.trim(),
-          address: addrInput.value.trim(),
-          owner_name: '',
-          owner_phone: ''
-        })
+      const propResult: ApiResult<any> = await propertyAPI.create({
+        name: nameInput.value.trim(),
+        address: addrInput.value.trim(),
       })
-      const propData = await propRes.json()
-      if (!propData.success) throw new Error('新增物業失敗')
-      const newPropertyId = propData.data.id
+      if (!propResult.success || !propResult.data) {
+        throw new Error(propResult.error || '新增物業失敗')
+      }
+      const newPropertyId = propResult.data.id
 
       // 2. 逐一新增房間
       const rooms = []
@@ -3189,22 +3200,17 @@ export default function Modal() {
         const roomsOnFloor = floorRooms[floor - 1]
         for (let r = 1; r <= roomsOnFloor; r++) {
           const roomLabel = `${floor}${r.toString().padStart(2, '0')}`
-          const roomRes = await fetch(`${API_URL}/rooms`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              property_id: newPropertyId,
-              floor: floor.toString(),
-              room_number: roomLabel,
-              monthly_rent: defaultRent,
-              deposit: defaultDeposit,
-              status: 'vacant',
-            })
+          const roomResult = await roomAPI.create({
+            property_id: newPropertyId,
+            floor: floor.toString(),
+            room_number: roomLabel,
+            monthly_rent: defaultRent,
+            deposit: defaultDeposit,
+            status: 'vacant',
           })
-          const roomData = await roomRes.json()
-          if (roomData.success) {
+          if (roomResult.success && roomResult.data) {
             rooms.push({
-              id: roomData.data.id,
+              id: roomResult.data.id,
               f: floor.toString(),
               n: roomLabel,
               r: defaultRent,
@@ -3282,6 +3288,8 @@ export default function Modal() {
       updateState({ currentProperty: newPropertyId })
       alert(`⚠️ 目前雲端未就緒（DATABASE_URL 未設定或同步失敗），已改為離線建立。\n已建立 ${offlineRooms.length} 間房間。`)
       closeModal()
+    } finally {
+      setIsSavingProperty(false)
     }
   }
 
@@ -4694,6 +4702,8 @@ export default function Modal() {
     const property = getCurrentProperty()
     if (!property) return
 
+    if (isSavingRoom) return
+
     const roomNumInput = document.getElementById('rn') as HTMLInputElement
     const floorInput = document.getElementById('rf') as HTMLInputElement
     const rentInput = document.getElementById('rr') as HTMLInputElement
@@ -4705,28 +4715,24 @@ export default function Modal() {
     }
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const res = await fetch(`${API_URL}/rooms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          property_id: property.id,
-          floor: parseInt(floorInput.value) || 1,
-          room_number: roomNumInput.value.trim(),
-          monthly_rent: parseInt(rentInput.value) || 7000,
-          deposit: parseInt(depositInput.value) || 14000,
-          status: 'vacant',
-        })
+      setIsSavingRoom(true)
+
+      const result = await roomAPI.create({
+        property_id: property.id,
+        floor: parseInt(floorInput.value) || 1,
+        room_number: roomNumInput.value.trim(),
+        monthly_rent: parseInt(rentInput.value) || 7000,
+        deposit: parseInt(depositInput.value) || 14000,
+        status: 'vacant',
       })
-      const data = await res.json()
-      if (!data.success) throw new Error(data.error || '新增失敗')
+      if (!result.success || !result.data) throw new Error(result.error || '新增失敗')
 
       const newRoom = {
-        id: data.data.id,
-        f: (data.data.floor || 1).toString(),
-        n: data.data.room_number,
-        r: data.data.rent_amount || parseInt(rentInput.value) || 7000,
-        d: data.data.deposit_amount || parseInt(depositInput.value) || 14000,
+        id: result.data.id,
+        f: (result.data.floor || 1).toString(),
+        n: result.data.room_number,
+        r: result.data.monthly_rent || parseInt(rentInput.value) || 7000,
+        d: result.data.deposit || parseInt(depositInput.value) || 14000,
         s: 'available' as const
       }
 
@@ -4741,6 +4747,8 @@ export default function Modal() {
       closeModal()
     } catch (err: any) {
       alert('❌ 新增房間失敗：' + err.message)
+    } finally {
+      setIsSavingRoom(false)
     }
   }
 

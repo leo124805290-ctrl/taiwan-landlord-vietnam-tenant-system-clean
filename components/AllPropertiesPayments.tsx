@@ -192,7 +192,6 @@ export default function AllPropertiesPayments(props: AllPropertiesPaymentsProps)
   )
   
   // 分類篩選邏輯
-// @ts-ignore
   const filterByCategory = (payment: any) => {
     if (categoryFilter === 'all') {
       // 全部待收：只顯示未歸檔的待收款項
@@ -236,7 +235,6 @@ export default function AllPropertiesPayments(props: AllPropertiesPaymentsProps)
   }
   
   // 物業篩選邏輯
-// @ts-ignore
   const filterByProperty = (payment: any) => {
     if (propertyFilter === 'all') return true
     return payment.propertyId === parseInt(propertyFilter)
@@ -264,7 +262,6 @@ export default function AllPropertiesPayments(props: AllPropertiesPaymentsProps)
   })
   
   // 收款函數
-// @ts-ignore
   const collectPayment = (payment: any) => {
     // 設置當前要收款的記錄
     updateState({ 
@@ -290,8 +287,7 @@ export default function AllPropertiesPayments(props: AllPropertiesPaymentsProps)
     const property = allProperties.find(p => p.id === propertyId)
     if (!property) return 0
     
-// @ts-ignore
-    const room = property.rooms.find((r: any) => r.id === roomId)
+    const room = (property as any).rooms.find((r: any) => r.id === roomId)
     if (!room) return 0
     
     return room.lastMeter || room.lm || 0

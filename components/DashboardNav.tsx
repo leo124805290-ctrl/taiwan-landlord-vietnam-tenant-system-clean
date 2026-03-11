@@ -7,7 +7,7 @@ import { useRole } from '@/contexts/RoleContext'
 
 export default function DashboardNav() {
   const pathname = usePathname()
-  const { t, locale, setLocale } = useI18n()
+  const { t, lang, setLang } = useI18n()
   const { isSuperadmin } = useRole()
 
   return (
@@ -57,18 +57,18 @@ export default function DashboardNav() {
       <div className="flex gap-1">
         <button
           type="button"
-          onClick={() => setLocale('zh-TW')}
+          onClick={() => setLang('zh-TW')}
           className={`px-2 py-1.5 rounded text-sm font-medium ${
-            locale === 'zh-TW' ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300'
+            lang === 'zh-TW' ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300'
           }`}
         >
           {t('langZh')}
         </button>
         <button
           type="button"
-          onClick={() => setLocale('vi')}
+          onClick={() => setLang('vi')}
           className={`px-2 py-1.5 rounded text-sm font-medium ${
-            locale === 'vi' ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300'
+            lang === 'vi' ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300'
           }`}
         >
           {t('langVi')}
