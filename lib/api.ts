@@ -1,6 +1,20 @@
 // API 服務層 - 封裝所有後端 Express API 呼叫
-// 後端基底 URL：NEXT_PUBLIC_API_URL，例如 https://xxx.zeabur.app/api
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+// 後端基底 URL：優先使用 NEXT_PUBLIC_API_URL，否則在 Vercel 預設連 Zeabur，其他環境預設走本機 /api
+const getDefaultApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname || '';
+    if (host.endsWith('vercel.app')) {
+      return 'https://taiwan-landlord-vietnam-tenant-system.zeabur.app/api';
+    }
+    return '/api';
+  }
+  if (process.env.VERCEL) {
+    return 'https://taiwan-landlord-vietnam-tenant-system.zeabur.app/api';
+  }
+  return '/api';
+};
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || getDefaultApiUrl();
 
 export interface ApiResult<T> {
   success: boolean;
