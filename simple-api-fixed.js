@@ -53,26 +53,24 @@ function errorResponse(error, message) {
  */
 function sendResponse(res, statusCode, data) {
   try {
-    const allowedOrigins = [
-      'https://taiwan-landlord-vietnam-tenant-syst.vercel.app',
-      'https://taiwan-landlord-vietnam-tenant-system-p45l60q8a.vercel.app',
-      'https://taiwan-landlord-vietnam-tenan-git-1d16cc-leo124805290s-projects.vercel.app',
-      'http://localhost:3000'
-    ];
-
-    const origin = req.headers.origin;
-    let corsOrigin = allowedOrigins[0];
-
-    if (origin && allowedOrigins.includes(origin)) {
-      corsOrigin = origin;
-    }
-
-    res.writeHead(statusCode, {
-      'Access-Control-Allow-Origin': corsOrigin,
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    // CORS 標頭已在 handleRequest 中設置，這裡只設置 Content-Type
+    const headers = {
       'Content-Type': 'application/json'
-    });
+    };
+    
+    // 保留現有的 CORS 標頭
+    const existingHeaders = res.getHeaders ? res.getHeaders() : {};
+    if (existingHeaders['Access-Control-Allow-Origin']) {
+      headers['Access-Control-Allow-Origin'] = existingHeaders['Access-Control-Allow-Origin'];
+    }
+    if (existingHeaders['Access-Control-Allow-Methods']) {
+      headers['Access-Control-Allow-Methods'] = existingHeaders['Access-Control-Allow-Methods'];
+    }
+    if (existingHeaders['Access-Control-Allow-Headers']) {
+      headers['Access-Control-Allow-Headers'] = existingHeaders['Access-Control-Allow-Headers'];
+    }
+    
+    res.writeHead(statusCode, headers);
     res.end(JSON.stringify(data));
   } catch (err) {
     console.error('❌ 發送回應失敗:', err);
@@ -282,7 +280,44 @@ async function deleteRoom(req, res) {
  */
 async function completeCheckin(req, res) {
   try {
-    const { room_id, tenant_name, tenant_phone, contract_start, contract_end } = req.body;
+    // 新版 API 支援兩種請求格式：
+    // 1. 舊格式：{ room_id, tenant_name, tenant_phone, contract_start, contract_end }
+    // 2. 新格式：{ room_id, tenant: { tenant_name, tenant_phone, check_in_date, check_out_date }, payment_option }
+    // 3. lib/api.ts 格式：{ room_id, tenant_name, phone, contract_start, contract_end, payment_type }
+    
+    let room_id, tenant_name, tenant_phone, contract_start, contract_end, payment_type;
+    
+    // 檢查請求格式
+    if (req.body.tenant && req.body.payment_option) {
+      // 新格式（來自 Modal.tsx）
+      room_id = req.body.room_id;
+      tenant_name = req.body.tenant.tenant_name;
+      tenant_phone = req.body.tenant.tenant_phone || '';
+      contract_start = req.body.tenant.check_in_date;
+      contract_end = req.body.tenant.check_out_date || null;
+      payment_type = req.body.payment_option; // 'full', 'deposit_only', 'reservation_only'
+    } else if (req.body.payment_type) {
+      // lib/api.ts 格式
+      room_id = req.body.room_id;
+      tenant_name = req.body.tenant_name;
+      tenant_phone = req.body.phone || '';
+      contract_start = req.body.contract_start;
+      contract_end = req.body.contract_end || null;
+      payment_type = req.body.payment_type; // 'full', 'deposit_only', 'booking_only'
+    } else {
+      // 舊格式
+      room_id = req.body.room_id;
+      tenant_name = req.body.tenant_name;
+      tenant_phone = req.body.tenant_phone || '';
+      contract_start = req.body.contract_start;
+      contract_end = req.body.contract_end || null;
+      payment_type = 'full'; // 默認全額付款
+    }
+
+    // 標準化 payment_type 值
+    if (payment_type === 'reservation_only') {
+      payment_type = 'booking_only';
+    }
 
     // 檢查房間是否存在
     const roomResult = await db.query('SELECT * FROM rooms WHERE id = $1', [room_id]);
@@ -291,16 +326,35 @@ async function completeCheckin(req, res) {
     }
 
     const room = roomResult.rows[0];
+    const property_id = room.property_id;
+    const monthly_rent = room.monthly_rent || room.r || 0;
+    const deposit = room.deposit || room.d || 0;
+
+    // 根據付款類型決定房間狀態
+    let room_status;
+    switch (payment_type) {
+      case 'full':
+        room_status = 'occupied'; // 全額付款 → 已入住
+        break;
+      case 'deposit_only':
+        room_status = 'pending_checkin_paid'; // 僅付押金 → 待入住（已結清）
+        break;
+      case 'booking_only':
+        room_status = 'pending_checkin_unpaid'; // 僅預約 → 待入住（尚未結清）
+        break;
+      default:
+        room_status = 'occupied';
+    }
 
     // 更新房間狀態
     await db.query(
       `UPDATE rooms
-       SET status = 'occupied',
-           tenant_name = $1,
-           check_in_date = $2,
-           check_out_date = $3
-       WHERE id = $4`,
-      [tenant_name, contract_start, contract_end, room_id]
+       SET status = $1,
+           tenant_name = $2,
+           check_in_date = $3,
+           check_out_date = $4
+       WHERE id = $5`,
+      [room_status, tenant_name, contract_start, contract_end, room_id]
     );
 
     // 建立租客記錄
@@ -310,14 +364,50 @@ async function completeCheckin(req, res) {
       [room_id, tenant_name, tenant_phone, contract_start, contract_end, contract_start, contract_end]
     );
 
+    // 根據付款類型建立付款記錄
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (payment_type === 'full') {
+      // 全額付款：記錄租金和押金
+      if (monthly_rent > 0) {
+        await db.query(
+          `INSERT INTO payments (room_id, property_id, type, amount, paid_date, note)
+           VALUES ($1, $2, 'rent', $3, $4, $5)`,
+          [room_id, property_id, monthly_rent, today, `入住租金 - ${tenant_name}`]
+        );
+      }
+      
+      if (deposit > 0) {
+        await db.query(
+          `INSERT INTO payments (room_id, property_id, type, amount, paid_date, note)
+           VALUES ($1, $2, 'deposit', $3, $4, $5)`,
+          [room_id, property_id, deposit, today, `入住押金 - ${tenant_name}`]
+        );
+      }
+    } else if (payment_type === 'deposit_only') {
+      // 僅付押金
+      if (deposit > 0) {
+        await db.query(
+          `INSERT INTO payments (room_id, property_id, type, amount, paid_date, note)
+           VALUES ($1, $2, 'deposit', $3, $4, $5)`,
+          [room_id, property_id, deposit, today, `入住押金（部分付款）- ${tenant_name}`]
+        );
+      }
+    }
+    // booking_only 不產生付款記錄
+
     // 記錄歷史
     await db.query(
       `INSERT INTO history (room_id, property_id, action, description, amount)
        VALUES ($1, $2, '入住', $3, $4)`,
-      [room_id, room.property_id, `租客 ${tenant_name} 入住`, `入住期間: ${contract_start} 至 ${contract_end}`, 0]
+      [room_id, property_id, `租客 ${tenant_name} 入住`, `入住期間: ${contract_start} 至 ${contract_end}，付款方式: ${payment_type}`, 0]
     );
 
-    return sendResponse(res, 200, successResponse({ message: '入住完成' }));
+    return sendResponse(res, 200, successResponse({ 
+      message: '入住完成',
+      room_status,
+      payment_type
+    }));
   } catch (error) {
     console.error('❌ 入住失敗:', error);
     return sendResponse(res, 500, errorResponse(error, '入住失敗'));
@@ -513,9 +603,44 @@ function handleRequest(req, res) {
   const path = req.url || req.path;
   console.log(`📝 ${req.method} ${path}`);
 
+  // 設置 CORS 標頭
+  const allowedOrigins = [
+    'https://taiwan-landlord-vietnam-tenant-syst.vercel.app',
+    'https://taiwan-landlord-vietnam-tenant-system-p45l60q8a.vercel.app',
+    'https://taiwan-landlord-vietnam-tenan-git-1d16cc-leo124805290s-projects.vercel.app',
+    'http://localhost:3000',
+    'https://*.vercel.app',
+    'https://*.zeabur.app'
+  ];
+  
+  const origin = req.headers.origin;
+  let corsOrigin = '*'; // 預設允許所有來源（開發用）
+  
+  if (origin) {
+    // 檢查是否在允許清單中，或匹配萬用字元
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed.includes('*')) {
+        const pattern = allowed.replace('.', '\\.').replace('*', '.*');
+        return new RegExp(pattern).test(origin);
+      }
+      return allowed === origin;
+    });
+    if (isAllowed) {
+      corsOrigin = origin;
+    }
+  }
+  
+  // 設置 CORS 標頭
+  res.setHeader('Access-Control-Allow-Origin', corsOrigin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
   // 處理選項請求（CORS）
   if (req.method === 'OPTIONS') {
-    return sendResponse(res, 200, { success: true });
+    res.writeHead(200);
+    res.end();
+    return;
   }
 
   // 解析 path
@@ -608,8 +733,26 @@ const port = process.env.PORT || 3001;
 server.listen(port, () => {
   console.log(`\n✅ Zeabur API Server 執行中`);
   console.log(`📡 Port: ${port}`);
-  console.log(`🔗 URL: https://taiwan-landlord-test.zeabur.app/api`);
-  console.log(`💾 Database: ${DATABASE_URL.match(/:[^/:]+@/)[0]}***`);
+  
+  // 動態生成 API URL
+  const zeaburDomain = process.env.ZEABUR_PROJECT_DOMAIN || process.env.ZEABUR_SERVICE_DOMAIN;
+  let apiUrl = `http://localhost:${port}/api`;
+  if (zeaburDomain) {
+    apiUrl = `https://${zeaburDomain}/api`;
+  } else if (process.env.NODE_ENV === 'production') {
+    // 在 Zeabur 中，可以透過環境變數或請求標頭得知網域
+    apiUrl = `https://${process.env.HOST || 'zeabur.app'}/api`;
+  }
+  
+  console.log(`🔗 API URL: ${apiUrl}`);
+  
+  // 安全地顯示資料庫連線資訊（隱藏密碼）
+  if (DATABASE_URL && DATABASE_URL.match(/:[^/:]+@/)) {
+    console.log(`💾 Database: ${DATABASE_URL.match(/:[^/:]+@/)[0]}***`);
+  } else {
+    console.log(`💾 Database: Connected`);
+  }
+  
   console.log(`✨ API Routes:`);
   console.log(`   - /api/properties (GET, POST, PUT, DELETE)`);
   console.log(`   - /api/rooms (GET, POST, PUT, DELETE)`);
